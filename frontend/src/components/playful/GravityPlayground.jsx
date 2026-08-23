@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
+import { usePhysics } from '../../physics/PhysicsProvider';
 import { sounds } from '../../services/soundEffects';
 
 const SKILL_COLORS = {
@@ -17,6 +18,7 @@ const GravityPlayground = ({
   height = 500,
   className = '',
 }) => {
+  const { isZeroG } = usePhysics() || {};
   const containerRef = useRef(null);
   const engineRef = useRef(null);
   const runnerRef = useRef(null);
@@ -29,6 +31,18 @@ const GravityPlayground = ({
   const [collisionAlert, setCollisionAlert] = useState(null);
   const [earthRotation, setEarthRotation] = useState(0);
   const [hoveredSkill, setHoveredSkill] = useState(null);
+
+  // Sync Zero-G mode
+  useEffect(() => {
+    if (!engineRef.current) return;
+    if (isZeroG) {
+      engineRef.current.gravity.y = -0.12;
+      engineRef.current.gravity.x = (Math.random() - 0.5) * 0.04;
+    } else {
+      engineRef.current.gravity.y = 0.4;
+      engineRef.current.gravity.x = 0;
+    }
+  }, [isZeroG]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -313,68 +327,137 @@ const GravityPlayground = ({
         })}
       </svg>
 
-      {/* 🌍 REALISTIC EARTH GLOBE */}
+      {/* Laser connection between Earth and hovered skill */}
+      {hoveredSkill && earthBody && (() => {
+        const targetNode = nodes.find(n => n.id === hoveredSkill);
+        if (!targetNode?.body) return null;
+        return (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+            <line
+              x1={earthBody.position.x}
+              y1={earthBody.position.y}
+              x2={targetNode.body.position.x}
+              y2={targetNode.body.position.y}
+              stroke="#00D4FF"
+              strokeWidth="2.5"
+              strokeDasharray="4 4"
+              opacity={0.8}
+            />
+            <circle
+              cx={targetNode.body.position.x}
+              cy={targetNode.body.position.y}
+              r={targetNode.radius + 6}
+              fill="none"
+              stroke="#00D4FF"
+              strokeWidth="2"
+              className="animate-ping"
+            />
+          </svg>
+        );
+      })()}
+
+      {/* 🌍 REALISTIC INTERACTIVE EARTH GLOBE */}
       {earthBody && (
         <div
-          className="absolute z-12"
-          style={{
-            width: 160,
-            height: 160,
-            left: earthBody.position.x - 80,
-            top: earthBody.position.y - 80,
-            pointerEvents: 'none',
+          className="absolute z-30 cursor-pointer group select-none transition-transform hover:scale-105"
+          onClick={() => {
+            try { sounds.playSuccess(); } catch (e) {}
+            // Gravitational Shockwave: blast all skills outward in a burst
+            const ePos = earthBody.position;
+            nodes.forEach(node => {
+              const b = node.body;
+              const dx = b.position.x - ePos.x;
+              const dy = b.position.y - ePos.y;
+              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              Matter.Body.applyForce(b, b.position, {
+                x: (dx / dist) * 0.04 + (Math.random() - 0.5) * 0.02,
+                y: (dy / dist) * 0.04 - 0.03,
+              });
+            });
+            setCollisionAlert({
+              text: '⚡ GRAVITATIONAL PULSE ACTIVATED!',
+              x: earthBody.position.x,
+              y: earthBody.position.y - 90,
+              id: Date.now(),
+            });
+            setTimeout(() => setCollisionAlert(null), 1800);
           }}
+          style={{
+            width: 170,
+            height: 170,
+            left: earthBody.position.x - 85,
+            top: earthBody.position.y - 85,
+          }}
+          title="Click to trigger Gravitational Pulse!"
         >
-          {/* Atmosphere glow ring */}
+          {/* Atmosphere pulse wave */}
           <div style={{
             position: 'absolute',
-            inset: -12,
+            inset: -16,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, transparent 55%, rgba(79,195,247,0.15) 65%, rgba(79,195,247,0.05) 80%, transparent 100%)',
-            animation: 'pulse 4s ease-in-out infinite',
+            background: 'radial-gradient(circle, transparent 50%, rgba(0,212,255,0.25) 65%, rgba(0,245,160,0.1) 80%, transparent 100%)',
+            animation: 'pulse 3s ease-in-out infinite',
           }} />
 
-          {/* Earth sphere with real texture */}
+          {/* Earth sphere with photorealistic texture */}
           <div style={{
-            width: 140,
-            height: 140,
-            margin: '10px',
+            width: 146,
+            height: 146,
+            margin: '12px',
             borderRadius: '50%',
             backgroundImage: 'url(/earth.jpg)',
-            backgroundSize: '280px 140px',
+            backgroundSize: '292px 146px',
             backgroundPositionY: 'center',
-            backgroundPositionX: `${-earthRotation % 280}px`,
+            backgroundPositionX: `${-earthRotation % 292}px`,
             boxShadow: `
-              inset -20px -10px 40px rgba(0,0,0,0.6),
-              inset 5px 5px 20px rgba(255,255,255,0.1),
-              0 0 30px rgba(79,195,247,0.3),
-              0 0 60px rgba(79,195,247,0.15),
-              0 0 100px rgba(79,195,247,0.08)
+              inset -24px -14px 45px rgba(0,0,0,0.7),
+              inset 6px 6px 25px rgba(255,255,255,0.2),
+              0 0 35px rgba(79,195,247,0.4),
+              0 0 70px rgba(0,212,255,0.2)
             `,
-            border: '2px solid rgba(79,195,247,0.3)',
+            border: '2px solid rgba(0,212,255,0.5)',
             position: 'relative',
             overflow: 'hidden',
           }}>
             {/* Specular highlight */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2) 0%, transparent 50%)',
+              background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25) 0%, transparent 50%)',
             }} />
             {/* Shadow edge */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.5) 100%)',
+              background: 'linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.6) 100%)',
             }} />
+
+            {/* Earth Center HUD Indicator */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px]">
+              <span className="text-[10px] font-black text-[#00F5A0] uppercase tracking-wider">⚡ PULSE</span>
+              <span className="text-[8px] font-bold text-white/90">CLICK CORE</span>
+            </div>
           </div>
 
-          {/* Label */}
+          {/* Orbit Telemetry Badge */}
           <div style={{
-            textAlign: 'center', marginTop: 2,
-            fontSize: '10px', fontWeight: 900, color: 'rgba(255,255,255,0.7)',
-            letterSpacing: '0.2em', textTransform: 'uppercase',
-            textShadow: '0 0 8px rgba(0,212,255,0.5)',
+            position: 'absolute',
+            bottom: -8,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(5, 10, 25, 0.85)',
+            border: '1.5px solid rgba(0,212,255,0.4)',
+            backdropFilter: 'blur(4px)',
+            borderRadius: 9999,
+            padding: '2px 10px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
           }}>
-            SKILL PLANET
+            <span className="w-2 h-2 rounded-full bg-[#00F5A0] animate-ping" />
+            <span className="text-[9px] font-black text-white uppercase tracking-wider">
+              EARTH GRAVITY CORE
+            </span>
           </div>
         </div>
       )}
