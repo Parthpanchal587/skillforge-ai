@@ -356,15 +356,15 @@ const GravityPlayground = ({
         );
       })()}
 
-      {/* 🌍 REALISTIC INTERACTIVE EARTH GLOBE */}
+      {/* 🌍 REALISTIC STABLE ROUND EARTH GLOBE */}
       {earthBody && (
         <div
-          className="absolute z-30 cursor-pointer group select-none transition-transform hover:scale-105"
+          className="absolute flex items-center justify-center cursor-pointer group select-none"
           onClick={() => {
-            try { sounds.playSuccess(); } catch (e) {}
-            // Gravitational Shockwave: blast all skills outward in a burst
+            // Pulse shockwave
+            try { sounds.playLaunch(); } catch (e) {}
             const ePos = earthBody.position;
-            nodes.forEach(node => {
+            nodes.forEach((node) => {
               const b = node.body;
               const dx = b.position.x - ePos.x;
               const dy = b.position.y - ePos.y;
@@ -383,55 +383,53 @@ const GravityPlayground = ({
             setTimeout(() => setCollisionAlert(null), 1800);
           }}
           style={{
-            width: 170,
-            height: 170,
-            left: earthBody.position.x - 85,
-            top: earthBody.position.y - 85,
+            width: 140,
+            height: 140,
+            left: earthBody.position.x - 70,
+            top: earthBody.position.y - 70,
           }}
           title="Click to trigger Gravitational Pulse!"
         >
           {/* Atmosphere pulse wave */}
           <div style={{
             position: 'absolute',
-            inset: -16,
+            inset: -14,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, transparent 50%, rgba(0,212,255,0.25) 65%, rgba(0,245,160,0.1) 80%, transparent 100%)',
+            background: 'radial-gradient(circle, transparent 50%, rgba(0,212,255,0.25) 70%, rgba(0,245,160,0.12) 85%, transparent 100%)',
             animation: 'pulse 3s ease-in-out infinite',
+            pointerEvents: 'none',
           }} />
 
-          {/* Earth sphere with photorealistic texture */}
+          {/* Earth sphere: perfectly round, stable, fully filled */}
           <div style={{
-            width: 146,
-            height: 146,
-            margin: '12px',
+            width: 140,
+            height: 140,
             borderRadius: '50%',
             backgroundImage: 'url(/earth.jpg)',
-            backgroundSize: '292px 146px',
-            backgroundPositionY: 'center',
-            backgroundPositionX: `${-earthRotation % 292}px`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
             boxShadow: `
-              inset -24px -14px 45px rgba(0,0,0,0.7),
-              inset 6px 6px 25px rgba(255,255,255,0.2),
-              0 0 35px rgba(79,195,247,0.4),
-              0 0 70px rgba(0,212,255,0.2)
+              inset -18px -12px 35px rgba(0, 0, 0, 0.7),
+              inset 6px 6px 15px rgba(255, 255, 255, 0.2),
+              0 0 25px rgba(0, 212, 255, 0.45),
+              0 0 50px rgba(0, 180, 255, 0.2)
             `,
-            border: '2px solid rgba(0,212,255,0.5)',
+            border: '2px solid rgba(0, 212, 255, 0.5)',
             position: 'relative',
             overflow: 'hidden',
           }}>
-            {/* Specular highlight */}
+            {/* Subtle atmospheric curvature glow */}
             <div style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25) 0%, transparent 50%)',
-            }} />
-            {/* Shadow edge */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.6) 100%)',
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2) 0%, transparent 60%)',
+              pointerEvents: 'none',
             }} />
 
-            {/* Earth Center HUD Indicator */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px]">
+            {/* Earth Center HUD Indicator on hover */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] rounded-full">
               <span className="text-[10px] font-black text-[#00F5A0] uppercase tracking-wider">⚡ PULSE</span>
               <span className="text-[8px] font-bold text-white/90">CLICK CORE</span>
             </div>
@@ -440,7 +438,7 @@ const GravityPlayground = ({
           {/* Orbit Telemetry Badge */}
           <div style={{
             position: 'absolute',
-            bottom: -8,
+            bottom: -10,
             left: '50%',
             transform: 'translateX(-50%)',
             whiteSpace: 'nowrap',
