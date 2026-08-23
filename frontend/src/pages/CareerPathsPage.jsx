@@ -160,7 +160,7 @@ const CareerPathsPage = () => {
                     : 'text-[#5B5B7E] hover:text-[#1A1A2E]'
                 }`}
               >
-                🎯 Target Boss Roles & Gaps
+                🎯 Target Career Roles & Gaps
               </button>
             </div>
           </div>
@@ -456,7 +456,7 @@ const CareerPathsPage = () => {
             </div>
           )}
 
-          {/* TAB 2: TARGET BOSS ROLES & GAP ANALYSIS */}
+          {/* TAB 2: TARGET CAREER ROLES & GAP ANALYSIS */}
           {activeTab === 'roles' && (
             <div>
               {/* Interactive Role Cards Grid */}

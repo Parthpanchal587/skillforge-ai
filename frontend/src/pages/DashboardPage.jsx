@@ -357,9 +357,9 @@ const DashboardPage = () => {
             <span className="sf-badge sf-badge-purple mb-4">🏆 TROPHY ROOM & STATS</span>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Project Progress', value: projectProgress ? `${projectProgress.completionPercent || 0}%` : '—', icon: '💻', link: '/project-challenge', color: '#FFF8D6' },
+                { label: 'Pop Quizzes', value: 'Ready', icon: '⚡', link: '/practice-tests', color: '#FFF8D6' },
                 { label: 'Interview Readiness', value: interview?.overall ? `${interview.overall}%` : '—', icon: '🎤', link: '/interview-simulator', color: '#DDF9FF' },
-                { label: 'Skills Mastered', value: skills.filter(([, s]) => s.score >= 85).length, icon: '⚡', link: '/skill-health', color: '#D9FFE7' },
+                { label: 'Skills Mastered', value: skills.filter(([, s]) => s.score >= 85).length, icon: '🌟', link: '/skill-health', color: '#D9FFE7' },
                 { label: 'Achievements', value: earnedAchievements.length, icon: '🏅', link: '/skill-passport', color: '#FFE0EB' },
               ].map((stat) => (
                 <Link

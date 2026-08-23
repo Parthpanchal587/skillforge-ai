@@ -14,7 +14,6 @@ const Navbar = () => {
     { to: '/mind-map', label: 'Skill Toybox', icon: '🎈' },
     { to: '/practice-tests', label: 'Pop Quizzes', icon: '⚡' },
     { to: '/skill-health', label: 'Skill Checkup', icon: '🩺' },
-    { to: '/project-challenge', label: 'Boss Fights', icon: '👾' },
     { to: '/interview-simulator', label: 'AI Mock Grill', icon: '🎤' },
     { to: '/skill-passport', label: 'Secret Passport', icon: '🎫' },
     { to: '/career-paths', label: 'Career Map', icon: '🗺️' },

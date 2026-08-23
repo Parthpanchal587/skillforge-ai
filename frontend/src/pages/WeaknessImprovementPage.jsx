@@ -53,7 +53,7 @@ const WeaknessImprovementPage = () => {
             <h2 className="sf-heading sf-heading-lg mb-3">ZERO SKILL GAPS DETECTED!</h2>
             <p className="sf-text mb-6">All benchmarks met. You're physically untouchable in this track.</p>
             <GelatinousButton variant="primary" size="lg" className="w-full" onClick={() => navigate('/practice-tests')}>
-              Test Advanced Boss Quizzes →
+              Practice Quizzes →
             </GelatinousButton>
           </div>
         </div>

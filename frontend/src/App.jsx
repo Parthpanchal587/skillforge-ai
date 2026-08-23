@@ -20,7 +20,6 @@ import DashboardPage from './pages/DashboardPage';
 import MindMapPage from './pages/MindMapPage';
 import PracticeTestPage from './pages/PracticeTestPage';
 import SkillHealthPage from './pages/SkillHealthPage';
-import ProjectChallengePage from './pages/ProjectChallengePage';
 import SkillPassportPage from './pages/SkillPassportPage';
 import WeaknessImprovementPage from './pages/WeaknessImprovementPage';
 import InterviewSimulatorPage from './pages/InterviewSimulatorPage';
@@ -54,7 +53,6 @@ function AnimatedRoutes() {
         <Route path="/mind-map" element={<PageTransition locationKey={location.pathname}><MindMapPage /></PageTransition>} />
         <Route path="/practice-tests" element={<PageTransition locationKey={location.pathname}><PracticeTestPage /></PageTransition>} />
         <Route path="/skill-health" element={<PageTransition locationKey={location.pathname}><SkillHealthPage /></PageTransition>} />
-        <Route path="/project-challenge" element={<PageTransition locationKey={location.pathname}><ProjectChallengePage /></PageTransition>} />
         <Route path="/skill-passport" element={<PageTransition locationKey={location.pathname}><SkillPassportPage /></PageTransition>} />
         <Route path="/weakness-improvement" element={<PageTransition locationKey={location.pathname}><WeaknessImprovementPage /></PageTransition>} />
         <Route path="/interview-simulator" element={<PageTransition locationKey={location.pathname}><InterviewSimulatorPage /></PageTransition>} />
@@ -72,6 +70,7 @@ function AnimatedRoutes() {
         {/* Legacy redirects */}
         <Route path="/assessment" element={<Navigate to="/skill-assessment" replace />} />
         <Route path="/jobs" element={<Navigate to="/internships" replace />} />
+        <Route path="/project-challenge" element={<Navigate to="/dashboard" replace />} />
 
         {/* 404 */}
         <Route path="*" element={

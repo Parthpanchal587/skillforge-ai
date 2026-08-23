@@ -31,7 +31,7 @@ const plans = [
       'Everything in Community',
       'Unlimited Physics Drills & Quizzes',
       'Adaptive AI Weakness Elimination',
-      'Boss Fight Missions & Code Reviews',
+      'Real-World Projects & Code Reviews',
       'Secret Passport Cryptographic Export',
       '10 AI Mock Interview Grill Sessions / mo',
       'Real-Time Internship Match Score',
