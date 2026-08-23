@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Matter from 'matter-js';
-import { usePhysics } from '../../physics/PhysicsProvider';
 import { sounds } from '../../services/soundEffects';
 
 const SKILL_COLORS = {
@@ -19,37 +18,88 @@ const GravityPlayground = ({
   className = '',
 }) => {
   const containerRef = useRef(null);
-  const canvasRef = useRef(null);
-  const { engine, collisionAlert } = usePhysics();
-  const [nodes, setNodes] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const bodiesMapRef = useRef(new Map());
+  const engineRef = useRef(null);
+  const runnerRef = useRef(null);
+  const animRef = useRef(null);
+  const bodiesRef = useRef([]);
+  const wallsRef = useRef([]);
+  const constraintsRef = useRef([]);
+  const mouseConstraintRef = useRef(null);
+  const nodesDataRef = useRef([]);
+  const connectionsDataRef = useRef([]);
 
+  const [renderTick, setRenderTick] = useState(0);
+  const [collisionAlert, setCollisionAlert] = useState(null);
+  const [earthRotation, setEarthRotation] = useState(0);
+
+  // Build or rebuild the physics scene
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !engine) return;
+    if (!container) return;
 
     const width = container.clientWidth || 800;
     const h = height;
 
+    // Create a SELF-CONTAINED engine (no shared PhysicsProvider needed)
+    const engine = Matter.Engine.create({
+      gravity: { x: 0, y: 1, scale: 0.001 },
+      enableSleeping: false,
+    });
+    engineRef.current = engine;
+
+    const runner = Matter.Runner.create();
+    runnerRef.current = runner;
+    Matter.Runner.run(runner, engine);
+
     const world = engine.world;
 
-    // Clear previous dynamic bodies in this container
-    bodiesMapRef.current.forEach((body) => {
-      Matter.Composite.remove(world, body);
+    // Collision listener
+    Matter.Events.on(engine, 'collisionStart', (event) => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair;
+        const speedA = Matter.Vector.magnitude(bodyA.velocity);
+        const speedB = Matter.Vector.magnitude(bodyB.velocity);
+        if (Math.max(speedA, speedB) > 10) {
+          const target = bodyA.label !== 'wall' && bodyA.label !== 'floor' && bodyA.label !== 'ceiling'
+            ? bodyA.label
+            : bodyB.label !== 'wall' && bodyB.label !== 'floor' && bodyB.label !== 'ceiling'
+              ? bodyB.label
+              : null;
+          if (target && target !== 'earth') {
+            setCollisionAlert({
+              text: `Ouch! Go easy on ${target}! 💥`,
+              x: (bodyA.position.x + bodyB.position.x) / 2,
+              y: (bodyA.position.y + bodyB.position.y) / 2,
+              id: Date.now(),
+            });
+            setTimeout(() => setCollisionAlert(null), 1500);
+          }
+        }
+      }
     });
-    bodiesMapRef.current.clear();
 
-    // 1. Static Boundaries (Floor, Left Wall, Right Wall, Ceiling)
-    const wallOptions = { isStatic: true, restitution: 0.8, friction: 0.1, label: 'wall' };
-    const floor = Matter.Bodies.rectangle(width / 2, h + 30, width * 2, 60, { ...wallOptions, label: 'floor' });
-    const ceiling = Matter.Bodies.rectangle(width / 2, -30, width * 2, 60, { ...wallOptions, label: 'ceiling' });
-    const leftWall = Matter.Bodies.rectangle(-30, h / 2, 60, h * 2, wallOptions);
-    const rightWall = Matter.Bodies.rectangle(width + 30, h / 2, 60, h * 2, wallOptions);
+    // Walls
+    const wallOpts = { isStatic: true, restitution: 0.8, friction: 0.1, label: 'wall' };
+    const walls = [
+      Matter.Bodies.rectangle(width / 2, h + 30, width * 2, 60, { ...wallOpts, label: 'floor' }),
+      Matter.Bodies.rectangle(width / 2, -30, width * 2, 60, { ...wallOpts, label: 'ceiling' }),
+      Matter.Bodies.rectangle(-30, h / 2, 60, h * 2, wallOpts),
+      Matter.Bodies.rectangle(width + 30, h / 2, 60, h * 2, wallOpts),
+    ];
+    Matter.Composite.add(world, walls);
+    wallsRef.current = walls;
 
-    Matter.Composite.add(world, [floor, ceiling, leftWall, rightWall]);
+    // 🌍 Earth body — large, heavy, sits at bottom center as gravitational anchor
+    const earthRadius = 55;
+    const earthBody = Matter.Bodies.circle(width / 2, h - earthRadius - 15, earthRadius, {
+      isStatic: true,
+      label: 'earth',
+      restitution: 0.6,
+      friction: 0.3,
+    });
+    Matter.Composite.add(world, earthBody);
 
-    // 2. Create Skill Bodies with "Weight of Mastery"
+    // Skill bodies
     const skillList = skills.length > 0 ? skills : [
       { id: 'html-css', name: 'HTML & CSS', parentId: null },
       { id: 'javascript', name: 'JavaScript', parentId: 'html-css' },
@@ -60,6 +110,7 @@ const GravityPlayground = ({
       { id: 'git', name: 'Git & GitHub', parentId: null },
     ];
 
+    const bodiesMap = new Map();
     const newNodes = [];
     const bodies = [];
 
@@ -68,34 +119,22 @@ const GravityPlayground = ({
       const score = scoreData.score || 0;
       const status = scoreData.status || (score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT');
 
-      // The "Weight" of Mastery:
-      // Mastered skills = heavy bowling balls (radius 50, mass 12)
-      // Weak skills = tiny bouncy bubbles (radius 32, mass 1, restitution 0.95)
       let radius = 34;
       let density = 0.001;
       let restitution = 0.85;
 
       if (status === 'MASTERED') {
-        radius = 50;
-        density = 0.006; // heavy bowling ball
-        restitution = 0.4;
+        radius = 50; density = 0.006; restitution = 0.4;
       } else if (status === 'STRONG') {
-        radius = 44;
-        density = 0.003;
-        restitution = 0.65;
+        radius = 44; density = 0.003; restitution = 0.65;
       } else if (status === 'DEVELOPING') {
-        radius = 38;
-        density = 0.0015;
-        restitution = 0.8;
+        radius = 38; density = 0.0015; restitution = 0.8;
       } else {
-        radius = 32;
-        density = 0.0008; // light bouncy bubble
-        restitution = 0.92;
+        radius = 32; density = 0.0008; restitution = 0.92;
       }
 
-      // Drop from top of screen at random X
       const spawnX = 60 + (width - 120) * ((index + 0.5) / skillList.length) + (Math.random() - 0.5) * 30;
-      const spawnY = -40 - index * 60; // staggered drop
+      const spawnY = -40 - index * 60;
 
       const body = Matter.Bodies.circle(spawnX, spawnY, radius, {
         restitution,
@@ -105,14 +144,13 @@ const GravityPlayground = ({
         label: skill.name,
       });
 
-      // Give a tiny initial kick
       Matter.Body.setVelocity(body, {
         x: (Math.random() - 0.5) * 4,
         y: Math.random() * 2 + 1,
       });
 
       bodies.push(body);
-      bodiesMapRef.current.set(skill.id, body);
+      bodiesMap.set(skill.id, body);
 
       newNodes.push({
         id: skill.id,
@@ -127,60 +165,73 @@ const GravityPlayground = ({
     });
 
     Matter.Composite.add(world, bodies);
-    setNodes(newNodes);
+    bodiesRef.current = bodies;
 
-    // 3. Elastic Spring Constraints between related skills
+    // Earth node data for rendering
+    nodesDataRef.current = newNodes;
+
+    // Store earth body for rendering
+    bodiesRef.current.earth = earthBody;
+
+    // Elastic constraints
+    const createdConstraints = [];
     const createdConnections = [];
     skillList.forEach((skill) => {
-      if (skill.parentId && bodiesMapRef.current.has(skill.parentId) && bodiesMapRef.current.has(skill.id)) {
-        const bodyA = bodiesMapRef.current.get(skill.parentId);
-        const bodyB = bodiesMapRef.current.get(skill.id);
-
+      if (skill.parentId && bodiesMap.has(skill.parentId) && bodiesMap.has(skill.id)) {
+        const bodyA = bodiesMap.get(skill.parentId);
+        const bodyB = bodiesMap.get(skill.id);
         const constraint = Matter.Constraint.create({
           bodyA,
           bodyB,
-          stiffness: 0.008, // Springy rubber-band feel
+          stiffness: 0.008,
           damping: 0.04,
           length: 120,
         });
-
         Matter.Composite.add(world, constraint);
+        createdConstraints.push(constraint);
         createdConnections.push({ bodyA, bodyB });
       }
     });
-    setConnections(createdConnections);
+    constraintsRef.current = createdConstraints;
+    connectionsDataRef.current = createdConnections;
 
-    // 4. Mouse Drag & Throw Controller
+    // Mouse drag
     const mouse = Matter.Mouse.create(container);
-    // Allow wheel scroll through container
     mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
     mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
 
     const mouseConstraint = Matter.MouseConstraint.create(engine, {
       mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: { visible: false },
-      },
+      constraint: { stiffness: 0.2, render: { visible: false } },
     });
-
     Matter.Composite.add(world, mouseConstraint);
+    mouseConstraintRef.current = mouseConstraint;
 
-    // 5. Render Loop for DOM Synchronization
-    let animId;
+    // Render loop — lightweight tick counter
+    let frameCount = 0;
     const renderLoop = () => {
-      // Force update positions to re-render DOM nodes & elastic lines
-      setNodes((prev) => [...prev]);
-      animId = requestAnimationFrame(renderLoop);
+      frameCount++;
+      if (frameCount % 2 === 0) {
+        setRenderTick(t => t + 1);
+        setEarthRotation(r => r + 0.3);
+      }
+      animRef.current = requestAnimationFrame(renderLoop);
     };
-    animId = requestAnimationFrame(renderLoop);
+    animRef.current = requestAnimationFrame(renderLoop);
 
     return () => {
-      cancelAnimationFrame(animId);
-      Matter.Composite.remove(world, [floor, ceiling, leftWall, rightWall, mouseConstraint]);
-      bodies.forEach((b) => Matter.Composite.remove(world, b));
+      cancelAnimationFrame(animRef.current);
+      Matter.Runner.stop(runner);
+      Matter.Engine.clear(engine);
+      engineRef.current = null;
+      runnerRef.current = null;
     };
-  }, [skills, skillScores, height, engine]);
+  }, [skills, skillScores, height]);
+
+  // Read current positions from refs for rendering (no stale closure)
+  const nodes = nodesDataRef.current;
+  const connections = connectionsDataRef.current;
+  const earthBody = bodiesRef.current.earth;
 
   return (
     <div
@@ -196,7 +247,7 @@ const GravityPlayground = ({
         backgroundSize: '20px 20px',
       }}
     >
-      {/* Cheeky Collision Banner */}
+      {/* Collision Alert */}
       {collisionAlert && (
         <div
           className="absolute z-30 px-3 py-1.5 rounded-full text-xs font-black text-[#1A1A2E] bg-[#FFE135] border-2 border-[#1A1A2E] shadow-[2px_2px_0px_#1A1A2E] pointer-events-none animate-bounce"
@@ -209,14 +260,14 @@ const GravityPlayground = ({
         </div>
       )}
 
-      {/* Top Floating Helper Banner */}
+      {/* Top Banner */}
       <div className="absolute top-3 left-4 z-20 flex items-center gap-2 pointer-events-none">
         <span className="px-3 py-1 bg-white border-2 border-[#1A1A2E] rounded-full text-[11px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#1A1A2E] text-[#1A1A2E]">
           🎪 Generative Gravity Toybox • Grab & Throw!
         </span>
       </div>
 
-      {/* SVG Rubber-Band Elastic Connections */}
+      {/* SVG Elastic Connections */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
         {connections.map((conn, idx) => {
           if (!conn.bodyA || !conn.bodyB) return null;
@@ -237,7 +288,83 @@ const GravityPlayground = ({
         })}
       </svg>
 
-      {/* Bouncy Physical DOM Skill Bubbles */}
+      {/* 🌍 EARTH — Spinning Globe at Bottom Center */}
+      {earthBody && (
+        <div
+          className="absolute z-12 pointer-events-none"
+          style={{
+            width: 110,
+            height: 110,
+            left: earthBody.position.x - 55,
+            top: earthBody.position.y - 55,
+            transform: `rotate(${earthRotation}deg)`,
+          }}
+        >
+          {/* Earth visual using pure CSS */}
+          <div style={{
+            width: 110,
+            height: 110,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #4FC3F7 0%, #1565C0 40%, #0D47A1 70%, #1A237E 100%)',
+            boxShadow: '0 0 20px rgba(79,195,247,0.4), inset -8px -8px 20px rgba(0,0,0,0.3), 0 4px 0px #1A1A2E',
+            border: '3px solid #1A1A2E',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            {/* Continent shapes using pseudo-element-like divs */}
+            <div style={{
+              position: 'absolute', width: '35%', height: '25%',
+              background: '#4CAF50', borderRadius: '40% 60% 50% 30%',
+              top: '20%', left: '15%', opacity: 0.85,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+            }} />
+            <div style={{
+              position: 'absolute', width: '20%', height: '35%',
+              background: '#66BB6A', borderRadius: '30% 50% 40% 60%',
+              top: '30%', left: '55%', opacity: 0.8,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+            }} />
+            <div style={{
+              position: 'absolute', width: '25%', height: '18%',
+              background: '#43A047', borderRadius: '50% 40% 60% 30%',
+              top: '60%', left: '30%', opacity: 0.75,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+            }} />
+            <div style={{
+              position: 'absolute', width: '15%', height: '20%',
+              background: '#81C784', borderRadius: '45%',
+              top: '15%', left: '60%', opacity: 0.7,
+            }} />
+            {/* Atmosphere glow */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 60%)',
+            }} />
+            {/* Cloud wisps */}
+            <div style={{
+              position: 'absolute', width: '60%', height: '8%',
+              background: 'rgba(255,255,255,0.4)', borderRadius: '50%',
+              top: '25%', left: '20%', filter: 'blur(2px)',
+            }} />
+            <div style={{
+              position: 'absolute', width: '40%', height: '6%',
+              background: 'rgba(255,255,255,0.3)', borderRadius: '50%',
+              top: '55%', left: '40%', filter: 'blur(2px)',
+            }} />
+          </div>
+          {/* Label below earth */}
+          <div style={{
+            textAlign: 'center', marginTop: 4,
+            fontSize: '9px', fontWeight: 900, color: '#1A1A2E',
+            letterSpacing: '0.15em', textTransform: 'uppercase',
+          }}>
+            🌍 SKILL PLANET
+          </div>
+        </div>
+      )}
+
+      {/* Bouncy Skill Bubbles */}
       {nodes.map((node) => {
         const body = node.body;
         if (!body) return null;
@@ -254,7 +381,7 @@ const GravityPlayground = ({
               try { sounds.playPop(); } catch (e) {}
               if (onSelectSkill) onSelectSkill(node.id);
             }}
-            className="absolute flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-center transition-shadow select-none group"
+            className="absolute flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-center select-none group"
             style={{
               width: r * 2,
               height: r * 2,
@@ -267,6 +394,7 @@ const GravityPlayground = ({
               borderRadius: '50%',
               boxShadow: '4px 4px 0px #1A1A2E',
               zIndex: 15,
+              transition: 'box-shadow 0.1s',
             }}
           >
             <span className="text-xs leading-none mb-0.5">{node.colorConfig.badge}</span>
@@ -279,6 +407,9 @@ const GravityPlayground = ({
           </div>
         );
       })}
+
+      {/* Force render sync */}
+      <span className="hidden">{renderTick}</span>
     </div>
   );
 };
