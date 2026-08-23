@@ -1,48 +1,47 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { sounds } from '../../services/soundEffects';
 
 const SKILL_COLORS = {
-  MASTERED: { bg: '#00F5A0', text: '#1A1A2E', border: '#1A1A2E', badge: '🏆' },
-  STRONG: { bg: '#00D4FF', text: '#1A1A2E', border: '#1A1A2E', badge: '💪' },
-  DEVELOPING: { bg: '#FFE135', text: '#1A1A2E', border: '#1A1A2E', badge: '⚡' },
-  NEEDS_IMPROVEMENT: { bg: '#FF6B9D', text: '#FFFFFF', border: '#1A1A2E', badge: '⚠️' },
-  LOCKED: { bg: '#E4DFD5', text: '#7E7E9A', border: '#1A1A2E', badge: '🔒' },
+  MASTERED: { bg: '#00F5A0', text: '#1A1A2E', border: '#1A1A2E', badge: '🏆', glow: 'rgba(0,245,160,0.5)' },
+  STRONG: { bg: '#00D4FF', text: '#1A1A2E', border: '#1A1A2E', badge: '💪', glow: 'rgba(0,212,255,0.5)' },
+  DEVELOPING: { bg: '#FFE135', text: '#1A1A2E', border: '#1A1A2E', badge: '⚡', glow: 'rgba(255,225,53,0.5)' },
+  NEEDS_IMPROVEMENT: { bg: '#FF6B9D', text: '#FFFFFF', border: '#1A1A2E', badge: '⚠️', glow: 'rgba(255,107,157,0.5)' },
+  LOCKED: { bg: '#E4DFD5', text: '#7E7E9A', border: '#1A1A2E', badge: '🔒', glow: 'rgba(200,200,200,0.3)' },
 };
 
 const GravityPlayground = ({
   skills = [],
   skillScores = {},
   onSelectSkill,
-  height = 420,
+  height = 500,
   className = '',
 }) => {
   const containerRef = useRef(null);
   const engineRef = useRef(null);
   const runnerRef = useRef(null);
   const animRef = useRef(null);
-  const bodiesRef = useRef([]);
-  const wallsRef = useRef([]);
-  const constraintsRef = useRef([]);
-  const mouseConstraintRef = useRef(null);
   const nodesDataRef = useRef([]);
   const connectionsDataRef = useRef([]);
+  const earthBodyRef = useRef(null);
 
   const [renderTick, setRenderTick] = useState(0);
   const [collisionAlert, setCollisionAlert] = useState(null);
   const [earthRotation, setEarthRotation] = useState(0);
+  const [hoveredSkill, setHoveredSkill] = useState(null);
 
-  // Build or rebuild the physics scene
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const width = container.clientWidth || 800;
     const h = height;
+    const centerX = width / 2;
+    const centerY = h / 2 + 30;
 
-    // Create a SELF-CONTAINED engine (no shared PhysicsProvider needed)
+    // Self-contained physics engine
     const engine = Matter.Engine.create({
-      gravity: { x: 0, y: 1, scale: 0.001 },
+      gravity: { x: 0, y: 0.4, scale: 0.001 },
       enableSleeping: false,
     });
     engineRef.current = engine;
@@ -53,33 +52,30 @@ const GravityPlayground = ({
 
     const world = engine.world;
 
-    // Collision listener
+    // Collision alerts
     Matter.Events.on(engine, 'collisionStart', (event) => {
       for (const pair of event.pairs) {
         const { bodyA, bodyB } = pair;
         const speedA = Matter.Vector.magnitude(bodyA.velocity);
         const speedB = Matter.Vector.magnitude(bodyB.velocity);
-        if (Math.max(speedA, speedB) > 10) {
-          const target = bodyA.label !== 'wall' && bodyA.label !== 'floor' && bodyA.label !== 'ceiling'
-            ? bodyA.label
-            : bodyB.label !== 'wall' && bodyB.label !== 'floor' && bodyB.label !== 'ceiling'
-              ? bodyB.label
-              : null;
-          if (target && target !== 'earth') {
+        if (Math.max(speedA, speedB) > 8) {
+          const target = ['wall', 'floor', 'ceiling', 'earth'].includes(bodyA.label)
+            ? bodyB.label : bodyA.label;
+          if (!['wall', 'floor', 'ceiling', 'earth'].includes(target)) {
             setCollisionAlert({
-              text: `Ouch! Go easy on ${target}! 💥`,
+              text: `💥 ${target} crashed!`,
               x: (bodyA.position.x + bodyB.position.x) / 2,
               y: (bodyA.position.y + bodyB.position.y) / 2,
               id: Date.now(),
             });
-            setTimeout(() => setCollisionAlert(null), 1500);
+            setTimeout(() => setCollisionAlert(null), 1800);
           }
         }
       }
     });
 
     // Walls
-    const wallOpts = { isStatic: true, restitution: 0.8, friction: 0.1, label: 'wall' };
+    const wallOpts = { isStatic: true, restitution: 0.7, friction: 0.05, label: 'wall' };
     const walls = [
       Matter.Bodies.rectangle(width / 2, h + 30, width * 2, 60, { ...wallOpts, label: 'floor' }),
       Matter.Bodies.rectangle(width / 2, -30, width * 2, 60, { ...wallOpts, label: 'ceiling' }),
@@ -87,19 +83,16 @@ const GravityPlayground = ({
       Matter.Bodies.rectangle(width + 30, h / 2, 60, h * 2, wallOpts),
     ];
     Matter.Composite.add(world, walls);
-    wallsRef.current = walls;
 
-    // 🌍 Earth body — large, heavy, sits at bottom center as gravitational anchor
-    const earthRadius = 55;
-    const earthBody = Matter.Bodies.circle(width / 2, h - earthRadius - 15, earthRadius, {
-      isStatic: true,
-      label: 'earth',
-      restitution: 0.6,
-      friction: 0.3,
+    // 🌍 Earth — large static circle at center-bottom
+    const earthRadius = 70;
+    const earthBody = Matter.Bodies.circle(centerX, centerY + 40, earthRadius, {
+      isStatic: true, label: 'earth', restitution: 0.9, friction: 0.01,
     });
     Matter.Composite.add(world, earthBody);
+    earthBodyRef.current = earthBody;
 
-    // Skill bodies
+    // Skill nodes
     const skillList = skills.length > 0 ? skills : [
       { id: 'html-css', name: 'HTML & CSS', parentId: null },
       { id: 'javascript', name: 'JavaScript', parentId: 'html-css' },
@@ -115,106 +108,112 @@ const GravityPlayground = ({
     const bodies = [];
 
     skillList.forEach((skill, index) => {
-      const scoreData = skillScores[skill.id] || { score: Math.floor(40 + Math.random() * 50), status: 'DEVELOPING' };
+      const scoreData = skillScores[skill.id] || {
+        score: Math.floor(30 + Math.random() * 60),
+        status: 'DEVELOPING',
+      };
       const score = scoreData.score || 0;
-      const status = scoreData.status || (score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT');
+      const status = scoreData.status ||
+        (score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT');
 
-      let radius = 34;
-      let density = 0.001;
-      let restitution = 0.85;
-
+      let radius, density, restitution;
       if (status === 'MASTERED') {
-        radius = 50; density = 0.006; restitution = 0.4;
+        radius = 42; density = 0.004; restitution = 0.5;
       } else if (status === 'STRONG') {
-        radius = 44; density = 0.003; restitution = 0.65;
+        radius = 38; density = 0.0025; restitution = 0.65;
       } else if (status === 'DEVELOPING') {
-        radius = 38; density = 0.0015; restitution = 0.8;
+        radius = 34; density = 0.0015; restitution = 0.8;
       } else {
-        radius = 32; density = 0.0008; restitution = 0.92;
+        radius = 30; density = 0.0008; restitution = 0.9;
       }
 
-      const spawnX = 60 + (width - 120) * ((index + 0.5) / skillList.length) + (Math.random() - 0.5) * 30;
-      const spawnY = -40 - index * 60;
+      // Spawn in arc above the earth
+      const angle = (Math.PI * 0.15) + (Math.PI * 0.7) * (index / Math.max(skillList.length - 1, 1));
+      const orbitRadius = earthRadius + 100 + Math.random() * 80;
+      const spawnX = centerX + Math.cos(angle - Math.PI / 2) * orbitRadius;
+      const spawnY = (centerY + 40) + Math.sin(angle - Math.PI / 2) * orbitRadius - 60;
 
-      const body = Matter.Bodies.circle(spawnX, spawnY, radius, {
-        restitution,
-        density,
-        friction: 0.15,
-        frictionAir: 0.015,
-        label: skill.name,
-      });
+      const body = Matter.Bodies.circle(
+        Math.max(radius + 5, Math.min(width - radius - 5, spawnX)),
+        Math.max(-200, Math.min(h - radius, spawnY)),
+        radius,
+        {
+          restitution, density,
+          friction: 0.1, frictionAir: 0.02,
+          label: skill.name,
+        }
+      );
 
+      // Gentle initial push
       Matter.Body.setVelocity(body, {
-        x: (Math.random() - 0.5) * 4,
-        y: Math.random() * 2 + 1,
+        x: (Math.random() - 0.5) * 3,
+        y: -Math.random() * 2,
       });
 
       bodies.push(body);
       bodiesMap.set(skill.id, body);
 
       newNodes.push({
-        id: skill.id,
-        name: skill.name,
-        score,
-        status,
-        radius,
+        id: skill.id, name: skill.name, score, status, radius,
         colorConfig: SKILL_COLORS[status] || SKILL_COLORS.DEVELOPING,
-        body,
-        parentId: skill.parentId,
+        body, parentId: skill.parentId,
       });
     });
 
     Matter.Composite.add(world, bodies);
-    bodiesRef.current = bodies;
-
-    // Earth node data for rendering
     nodesDataRef.current = newNodes;
 
-    // Store earth body for rendering
-    bodiesRef.current.earth = earthBody;
-
     // Elastic constraints
-    const createdConstraints = [];
     const createdConnections = [];
     skillList.forEach((skill) => {
       if (skill.parentId && bodiesMap.has(skill.parentId) && bodiesMap.has(skill.id)) {
-        const bodyA = bodiesMap.get(skill.parentId);
-        const bodyB = bodiesMap.get(skill.id);
         const constraint = Matter.Constraint.create({
-          bodyA,
-          bodyB,
-          stiffness: 0.008,
-          damping: 0.04,
-          length: 120,
+          bodyA: bodiesMap.get(skill.parentId),
+          bodyB: bodiesMap.get(skill.id),
+          stiffness: 0.005, damping: 0.05, length: 100,
         });
         Matter.Composite.add(world, constraint);
-        createdConstraints.push(constraint);
-        createdConnections.push({ bodyA, bodyB });
+        createdConnections.push({
+          bodyA: bodiesMap.get(skill.parentId),
+          bodyB: bodiesMap.get(skill.id),
+        });
       }
     });
-    constraintsRef.current = createdConstraints;
     connectionsDataRef.current = createdConnections;
 
-    // Mouse drag
+    // Mouse interaction
     const mouse = Matter.Mouse.create(container);
     mouse.element.removeEventListener('mousewheel', mouse.mousewheel);
     mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel);
-
     const mouseConstraint = Matter.MouseConstraint.create(engine, {
       mouse,
       constraint: { stiffness: 0.2, render: { visible: false } },
     });
     Matter.Composite.add(world, mouseConstraint);
-    mouseConstraintRef.current = mouseConstraint;
 
-    // Render loop — lightweight tick counter
-    let frameCount = 0;
+    // Gentle orbital force — push skills to orbit around earth
+    Matter.Events.on(engine, 'beforeUpdate', () => {
+      const ePos = earthBody.position;
+      newNodes.forEach((node) => {
+        const b = node.body;
+        const dx = b.position.x - ePos.x;
+        const dy = b.position.y - ePos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // If too close to earth, push away gently
+        if (dist < earthRadius + node.radius + 15) {
+          const force = 0.0003;
+          Matter.Body.applyForce(b, b.position, {
+            x: (dx / dist) * force,
+            y: (dy / dist) * force,
+          });
+        }
+      });
+    });
+
+    // Render loop
     const renderLoop = () => {
-      frameCount++;
-      if (frameCount % 2 === 0) {
-        setRenderTick(t => t + 1);
-        setEarthRotation(r => r + 0.3);
-      }
+      setRenderTick((t) => t + 1);
+      setEarthRotation((r) => r + 0.15);
       animRef.current = requestAnimationFrame(renderLoop);
     };
     animRef.current = requestAnimationFrame(renderLoop);
@@ -223,15 +222,12 @@ const GravityPlayground = ({
       cancelAnimationFrame(animRef.current);
       Matter.Runner.stop(runner);
       Matter.Engine.clear(engine);
-      engineRef.current = null;
-      runnerRef.current = null;
     };
   }, [skills, skillScores, height]);
 
-  // Read current positions from refs for rendering (no stale closure)
   const nodes = nodesDataRef.current;
   const connections = connectionsDataRef.current;
-  const earthBody = bodiesRef.current.earth;
+  const earthBody = earthBodyRef.current;
 
   return (
     <div
@@ -239,21 +235,40 @@ const GravityPlayground = ({
       className={`relative w-full overflow-hidden select-none ${className}`}
       style={{
         height,
-        background: '#FAF7F2',
+        background: 'radial-gradient(ellipse at 50% 80%, #0B1628 0%, #050A15 50%, #020408 100%)',
         border: '3px solid #1A1A2E',
         borderRadius: '24px',
         boxShadow: '6px 6px 0px #1A1A2E',
-        backgroundImage: 'radial-gradient(rgba(26, 26, 46, 0.1) 1.5px, transparent 1.5px)',
-        backgroundSize: '20px 20px',
       }}
     >
+      {/* Star field background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: 21 }}>
+        {Array.from({ length: 60 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              width: Math.random() * 2.5 + 0.5,
+              height: Math.random() * 2.5 + 0.5,
+              background: '#FFFFFF',
+              opacity: Math.random() * 0.7 + 0.2,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animation: `twinkle ${2 + Math.random() * 4}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 3}s`,
+            }}
+          />
+        ))}
+      </div>
+
       {/* Collision Alert */}
       {collisionAlert && (
         <div
-          className="absolute z-30 px-3 py-1.5 rounded-full text-xs font-black text-[#1A1A2E] bg-[#FFE135] border-2 border-[#1A1A2E] shadow-[2px_2px_0px_#1A1A2E] pointer-events-none animate-bounce"
+          className="absolute z-40 px-3 py-1.5 rounded-full text-xs font-black text-white bg-[#FF5277] border-2 border-white shadow-lg pointer-events-none"
           style={{
             left: Math.min(Math.max(collisionAlert.x - 60, 20), (containerRef.current?.clientWidth || 600) - 140),
             top: Math.max(collisionAlert.y - 40, 20),
+            animation: 'bounceIn 0.3s ease-out',
           }}
         >
           {collisionAlert.text}
@@ -262,13 +277,24 @@ const GravityPlayground = ({
 
       {/* Top Banner */}
       <div className="absolute top-3 left-4 z-20 flex items-center gap-2 pointer-events-none">
-        <span className="px-3 py-1 bg-white border-2 border-[#1A1A2E] rounded-full text-[11px] font-black uppercase tracking-wider shadow-[2px_2px_0px_#1A1A2E] text-[#1A1A2E]">
-          🎪 Generative Gravity Toybox • Grab & Throw!
+        <span className="px-3 py-1 bg-black/60 backdrop-blur-sm border border-white/20 rounded-full text-[11px] font-black uppercase tracking-wider text-white/90"
+          style={{ textShadow: '0 0 10px rgba(0,212,255,0.5)' }}>
+          🌍 Skill Universe • Grab & Throw!
         </span>
       </div>
 
-      {/* SVG Elastic Connections */}
+      {/* SVG Connections */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+        {/* Glow filter */}
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
         {connections.map((conn, idx) => {
           if (!conn.bodyA || !conn.bodyB) return null;
           return (
@@ -278,101 +304,90 @@ const GravityPlayground = ({
               y1={conn.bodyA.position.y}
               x2={conn.bodyB.position.x}
               y2={conn.bodyB.position.y}
-              stroke="#1A1A2E"
-              strokeWidth="3.5"
-              strokeDasharray="4 4"
-              strokeLinecap="round"
-              opacity={0.4}
+              stroke="rgba(0,212,255,0.4)"
+              strokeWidth="2"
+              strokeDasharray="6 4"
+              filter="url(#glow)"
             />
           );
         })}
       </svg>
 
-      {/* 🌍 EARTH — Spinning Globe at Bottom Center */}
+      {/* 🌍 REALISTIC EARTH GLOBE */}
       {earthBody && (
         <div
-          className="absolute z-12 pointer-events-none"
+          className="absolute z-12"
           style={{
-            width: 110,
-            height: 110,
-            left: earthBody.position.x - 55,
-            top: earthBody.position.y - 55,
-            transform: `rotate(${earthRotation}deg)`,
+            width: 160,
+            height: 160,
+            left: earthBody.position.x - 80,
+            top: earthBody.position.y - 80,
+            pointerEvents: 'none',
           }}
         >
-          {/* Earth visual using pure CSS */}
+          {/* Atmosphere glow ring */}
           <div style={{
-            width: 110,
-            height: 110,
+            position: 'absolute',
+            inset: -12,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #4FC3F7 0%, #1565C0 40%, #0D47A1 70%, #1A237E 100%)',
-            boxShadow: '0 0 20px rgba(79,195,247,0.4), inset -8px -8px 20px rgba(0,0,0,0.3), 0 4px 0px #1A1A2E',
-            border: '3px solid #1A1A2E',
+            background: 'radial-gradient(circle, transparent 55%, rgba(79,195,247,0.15) 65%, rgba(79,195,247,0.05) 80%, transparent 100%)',
+            animation: 'pulse 4s ease-in-out infinite',
+          }} />
+
+          {/* Earth sphere with real texture */}
+          <div style={{
+            width: 140,
+            height: 140,
+            margin: '10px',
+            borderRadius: '50%',
+            backgroundImage: 'url(/earth.jpg)',
+            backgroundSize: '280px 140px',
+            backgroundPositionY: 'center',
+            backgroundPositionX: `${-earthRotation % 280}px`,
+            boxShadow: `
+              inset -20px -10px 40px rgba(0,0,0,0.6),
+              inset 5px 5px 20px rgba(255,255,255,0.1),
+              0 0 30px rgba(79,195,247,0.3),
+              0 0 60px rgba(79,195,247,0.15),
+              0 0 100px rgba(79,195,247,0.08)
+            `,
+            border: '2px solid rgba(79,195,247,0.3)',
             position: 'relative',
             overflow: 'hidden',
           }}>
-            {/* Continent shapes using pseudo-element-like divs */}
+            {/* Specular highlight */}
             <div style={{
-              position: 'absolute', width: '35%', height: '25%',
-              background: '#4CAF50', borderRadius: '40% 60% 50% 30%',
-              top: '20%', left: '15%', opacity: 0.85,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2) 0%, transparent 50%)',
             }} />
+            {/* Shadow edge */}
             <div style={{
-              position: 'absolute', width: '20%', height: '35%',
-              background: '#66BB6A', borderRadius: '30% 50% 40% 60%',
-              top: '30%', left: '55%', opacity: 0.8,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-            }} />
-            <div style={{
-              position: 'absolute', width: '25%', height: '18%',
-              background: '#43A047', borderRadius: '50% 40% 60% 30%',
-              top: '60%', left: '30%', opacity: 0.75,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-            }} />
-            <div style={{
-              position: 'absolute', width: '15%', height: '20%',
-              background: '#81C784', borderRadius: '45%',
-              top: '15%', left: '60%', opacity: 0.7,
-            }} />
-            {/* Atmosphere glow */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 60%)',
-            }} />
-            {/* Cloud wisps */}
-            <div style={{
-              position: 'absolute', width: '60%', height: '8%',
-              background: 'rgba(255,255,255,0.4)', borderRadius: '50%',
-              top: '25%', left: '20%', filter: 'blur(2px)',
-            }} />
-            <div style={{
-              position: 'absolute', width: '40%', height: '6%',
-              background: 'rgba(255,255,255,0.3)', borderRadius: '50%',
-              top: '55%', left: '40%', filter: 'blur(2px)',
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: 'linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.5) 100%)',
             }} />
           </div>
-          {/* Label below earth */}
+
+          {/* Label */}
           <div style={{
-            textAlign: 'center', marginTop: 4,
-            fontSize: '9px', fontWeight: 900, color: '#1A1A2E',
-            letterSpacing: '0.15em', textTransform: 'uppercase',
+            textAlign: 'center', marginTop: 2,
+            fontSize: '10px', fontWeight: 900, color: 'rgba(255,255,255,0.7)',
+            letterSpacing: '0.2em', textTransform: 'uppercase',
+            textShadow: '0 0 8px rgba(0,212,255,0.5)',
           }}>
-            🌍 SKILL PLANET
+            SKILL PLANET
           </div>
         </div>
       )}
 
-      {/* Bouncy Skill Bubbles */}
+      {/* Orbiting Skill Nodes */}
       {nodes.map((node) => {
         const body = node.body;
         if (!body) return null;
-
         const x = body.position.x;
         const y = body.position.y;
         const angle = body.angle;
         const r = node.radius;
+        const isHovered = hoveredSkill === node.id;
 
         return (
           <div
@@ -381,35 +396,59 @@ const GravityPlayground = ({
               try { sounds.playPop(); } catch (e) {}
               if (onSelectSkill) onSelectSkill(node.id);
             }}
-            className="absolute flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-center select-none group"
+            onMouseEnter={() => setHoveredSkill(node.id)}
+            onMouseLeave={() => setHoveredSkill(null)}
+            className="absolute flex flex-col items-center justify-center cursor-grab active:cursor-grabbing text-center select-none"
             style={{
               width: r * 2,
               height: r * 2,
-              left: 0,
-              top: 0,
-              transform: `translate(${x - r}px, ${y - r}px) rotate(${angle}rad)`,
+              left: 0, top: 0,
+              transform: `translate(${x - r}px, ${y - r}px) rotate(${angle}rad) scale(${isHovered ? 1.15 : 1})`,
               backgroundColor: node.colorConfig.bg,
               color: node.colorConfig.text,
-              border: '3px solid #1A1A2E',
+              border: `3px solid ${isHovered ? '#FFFFFF' : '#1A1A2E'}`,
               borderRadius: '50%',
-              boxShadow: '4px 4px 0px #1A1A2E',
-              zIndex: 15,
-              transition: 'box-shadow 0.1s',
+              boxShadow: isHovered
+                ? `0 0 20px ${node.colorConfig.glow}, 0 0 40px ${node.colorConfig.glow}, 4px 4px 0px #1A1A2E`
+                : `0 0 10px ${node.colorConfig.glow}, 4px 4px 0px rgba(0,0,0,0.4)`,
+              zIndex: isHovered ? 25 : 15,
+              transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s',
             }}
           >
             <span className="text-xs leading-none mb-0.5">{node.colorConfig.badge}</span>
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-tight px-1 leading-tight line-clamp-2">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight px-1 leading-tight line-clamp-2"
+              style={{ textShadow: node.status === 'NEEDS_IMPROVEMENT' ? '0 0 4px rgba(0,0,0,0.3)' : 'none' }}>
               {node.name}
             </span>
-            <span className="text-[10px] font-black opacity-90 mt-0.5">
+            <span className="text-[9px] font-black opacity-90 mt-0.5">
               {node.score}%
             </span>
           </div>
         );
       })}
 
-      {/* Force render sync */}
+      {/* Skill count indicator */}
+      <div className="absolute bottom-3 right-4 z-20 pointer-events-none">
+        <span className="px-3 py-1 bg-black/60 backdrop-blur-sm border border-white/20 rounded-full text-[11px] font-black text-white/80">
+          {nodes.length} skills orbiting
+        </span>
+      </div>
+
+      {/* Hidden render trigger */}
       <span className="hidden">{renderTick}</span>
+
+      {/* Inline keyframes for star twinkle */}
+      <style>{`
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.5); }
+        }
+        @keyframes bounceIn {
+          0% { transform: scale(0.5); opacity: 0; }
+          60% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
