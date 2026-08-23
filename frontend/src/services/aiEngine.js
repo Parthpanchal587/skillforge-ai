@@ -1,69 +1,181 @@
 import { DOMAINS, TARGET_ROLES, DEMO_INTERNSHIPS } from '../data/domainsData';
 
 // ============================================================
+// Domain Profile Weights & Capability Engine
+// ============================================================
+const DOMAIN_PROFILE_MAP = {
+  'full-stack': {
+    dimWeights: { coding: 0.35, problemSolving: 0.25, design: 0.20, appBuilding: 0.20 },
+    topicWeights: { 'JavaScript': 0.30, 'Programming Logic': 0.20, 'Database': 0.25, 'Backend': 0.25 },
+    description: 'Full-spectrum web application engineering, microservices, and databases.',
+  },
+  'web-dev': {
+    dimWeights: { design: 0.45, appBuilding: 0.35, coding: 0.20 },
+    topicWeights: { 'JavaScript': 0.50, 'Programming Logic': 0.30, 'Problem Solving': 0.20 },
+    description: 'Frontend architectures, modern design systems, and responsive user experiences.',
+  },
+  'app-dev': {
+    dimWeights: { appBuilding: 0.50, coding: 0.30, design: 0.20 },
+    topicWeights: { 'JavaScript': 0.40, 'Programming Logic': 0.30, 'CS Fundamentals': 0.30 },
+    description: 'Cross-platform mobile apps, native hardware integrations, and UX gestures.',
+  },
+  'ai-ml': {
+    dimWeights: { ai: 0.50, data: 0.30, problemSolving: 0.20 },
+    topicWeights: { 'Problem Solving': 0.40, 'Programming Logic': 0.30, 'CS Fundamentals': 0.30 },
+    description: 'Machine learning models, neural networks, NLP, and intelligent agents.',
+  },
+  'data-science': {
+    dimWeights: { data: 0.45, ai: 0.30, problemSolving: 0.25 },
+    topicWeights: { 'Database': 0.40, 'Problem Solving': 0.35, 'Programming Logic': 0.25 },
+    description: 'Statistical modeling, predictive analytics, and algorithmic data discovery.',
+  },
+  'data-analytics': {
+    dimWeights: { data: 0.50, design: 0.25, problemSolving: 0.25 },
+    topicWeights: { 'Database': 0.50, 'Problem Solving': 0.30, 'Programming Logic': 0.20 },
+    description: 'Enterprise BI dashboards, SQL optimization, KPIs, and metric intelligence.',
+  },
+  'cybersecurity': {
+    dimWeights: { security: 0.55, problemSolving: 0.25, cloud: 0.20 },
+    topicWeights: { 'CS Fundamentals': 0.40, 'Backend': 0.30, 'Problem Solving': 0.30 },
+    description: 'Threat modeling, penetration testing, cryptography, and defense architecture.',
+  },
+  'cloud': {
+    dimWeights: { cloud: 0.50, coding: 0.25, problemSolving: 0.25 },
+    topicWeights: { 'Backend': 0.35, 'CS Fundamentals': 0.35, 'Database': 0.30 },
+    description: 'Serverless cloud infrastructure, AWS/GCP architecture, and distributed systems.',
+  },
+  'software-eng': {
+    dimWeights: { problemSolving: 0.40, coding: 0.35, appBuilding: 0.25 },
+    topicWeights: { 'CS Fundamentals': 0.35, 'Programming Logic': 0.35, 'Problem Solving': 0.30 },
+    description: 'System design patterns, clean architecture, DSA, and scalable engineering.',
+  },
+  'devops': {
+    dimWeights: { cloud: 0.45, problemSolving: 0.30, coding: 0.25 },
+    topicWeights: { 'Backend': 0.35, 'CS Fundamentals': 0.35, 'Problem Solving': 0.30 },
+    description: 'CI/CD deployment pipelines, container orchestration, and observability.',
+  },
+};
+
+export function calculateAllDomainCapabilities(skillScores = {}, assessmentResults = null, interestProfile = null, selectedDomain = null) {
+  const dim = interestProfile?.dimensions || interestProfile || {};
+  const ts = assessmentResults?.topicScores || {};
+  const hasAssessment = !!(assessmentResults && Object.keys(ts).length > 0);
+  const hasInterest = !!(interestProfile && Object.keys(dim).length > 0);
+
+  const domainResults = DOMAINS.map((domain) => {
+    const mapping = DOMAIN_PROFILE_MAP[domain.id] || {
+      dimWeights: { coding: 0.5, problemSolving: 0.5 },
+      topicWeights: { 'Programming Logic': 0.5, 'Problem Solving': 0.5 },
+      description: domain.description,
+    };
+
+    // 1. Calculate Interest Affinity Score (0-100)
+    let interestScore = 60;
+    if (hasInterest) {
+      let weightedSum = 0;
+      let totalWeight = 0;
+      Object.entries(mapping.dimWeights).forEach(([key, weight]) => {
+        const val = dim[key] || 50;
+        weightedSum += val * weight;
+        totalWeight += weight;
+      });
+      interestScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 60;
+    }
+
+    // 2. Calculate Diagnostic Test Aptitude Score (0-100)
+    let aptitudeScore = 55;
+    if (hasAssessment) {
+      let weightedSum = 0;
+      let totalWeight = 0;
+      Object.entries(mapping.topicWeights).forEach(([topic, weight]) => {
+        const val = ts[topic] !== undefined ? ts[topic] : (assessmentResults.overall || 50);
+        weightedSum += val * weight;
+        totalWeight += weight;
+      });
+      aptitudeScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 55;
+    }
+
+    // 3. Calculate Domain Skill Mastery from tracked skills (0-100)
+    let domainTrackedScores = [];
+    domain.skills.forEach((sk) => {
+      const existing = skillScores[sk.id] || skillScores[sk.id.replace('-', '')];
+      if (existing && existing.score) {
+        domainTrackedScores.push(existing.score);
+      }
+    });
+
+    let masteryScore = aptitudeScore;
+    if (domainTrackedScores.length > 0) {
+      const avgTracked = domainTrackedScores.reduce((a, b) => a + b, 0) / domainTrackedScores.length;
+      masteryScore = Math.round(avgTracked);
+    }
+
+    // Composite Capability Percentage
+    let capabilityPercentage = 0;
+    if (hasAssessment && hasInterest) {
+      capabilityPercentage = Math.round(aptitudeScore * 0.45 + masteryScore * 0.35 + interestScore * 0.20);
+    } else if (hasAssessment) {
+      capabilityPercentage = Math.round(aptitudeScore * 0.60 + masteryScore * 0.40);
+    } else if (hasInterest) {
+      capabilityPercentage = Math.round(interestScore * 0.50 + masteryScore * 0.50);
+    } else {
+      capabilityPercentage = Math.round(masteryScore * 0.70 + 20);
+    }
+
+    capabilityPercentage = Math.min(Math.max(capabilityPercentage, 35), 98);
+
+    let capabilityTier = 'Developing Track';
+    let badgeColor = 'amber';
+    if (capabilityPercentage >= 80) {
+      capabilityTier = 'High Match & Capable 🚀';
+      badgeColor = 'green';
+    } else if (capabilityPercentage >= 65) {
+      capabilityTier = 'Strong Potential ⚡';
+      badgeColor = 'cyan';
+    } else if (capabilityPercentage >= 50) {
+      capabilityTier = 'Ready to Learn 📚';
+      badgeColor = 'pink';
+    }
+
+    return {
+      ...domain,
+      capabilityPercentage,
+      aptitudeScore,
+      interestScore,
+      masteryScore,
+      capabilityTier,
+      badgeColor,
+      isActive: selectedDomain === domain.id,
+      skillsCount: domain.skills.length,
+      topSkills: domain.skills.slice(0, 4).map(s => s.name),
+    };
+  });
+
+  return domainResults.sort((a, b) => b.capabilityPercentage - a.capabilityPercentage);
+}
+
+// ============================================================
 // Domain Recommendation Engine
 // ============================================================
 export function recommendDomain(interestProfile, assessmentResults) {
-  const scores = {};
-  DOMAINS.forEach(d => { scores[d.id] = 0; });
-
-  // 1. Interest-based scoring (weight: 60%)
-  if (interestProfile?.dimensions) {
-    const dim = interestProfile.dimensions;
-    scores['fullstack'] += (dim.coding || 0) * 0.35 + (dim.problemSolving || 0) * 0.25 + (dim.design || 0) * 0.2 + (dim.appBuilding || 0) * 0.2;
-    scores['frontend'] += (dim.design || 0) * 0.45 + (dim.appBuilding || 0) * 0.35 + (dim.coding || 0) * 0.2;
-    scores['backend'] += (dim.coding || 0) * 0.4 + (dim.problemSolving || 0) * 0.35 + (dim.cloud || 0) * 0.25;
-    scores['aiml'] += (dim.ai || 0) * 0.5 + (dim.data || 0) * 0.3 + (dim.problemSolving || 0) * 0.2;
-    scores['data-science'] += (dim.data || 0) * 0.45 + (dim.ai || 0) * 0.3 + (dim.problemSolving || 0) * 0.25;
-    scores['data-analytics'] += (dim.data || 0) * 0.5 + (dim.design || 0) * 0.25 + (dim.problemSolving || 0) * 0.25;
-    scores['cybersecurity'] += (dim.security || 0) * 0.55 + (dim.problemSolving || 0) * 0.25 + (dim.cloud || 0) * 0.2;
-    scores['cloud'] += (dim.cloud || 0) * 0.5 + (dim.coding || 0) * 0.25 + (dim.problemSolving || 0) * 0.25;
-    scores['software-engineering'] += (dim.problemSolving || 0) * 0.4 + (dim.coding || 0) * 0.35 + (dim.appBuilding || 0) * 0.25;
-  }
-
-  // 2. Skill Assessment-based scoring (weight: 40%)
-  if (assessmentResults?.topicScores) {
-    const ts = assessmentResults.topicScores;
-    const prog = (ts['Programming Logic'] || 50) / 100;
-    const js = (ts['JavaScript'] || 50) / 100;
-    const db = (ts['Database'] || 50) / 100;
-    const be = (ts['Backend'] || 50) / 100;
-    const cs = (ts['CS Fundamentals'] || 50) / 100;
-    const ps = (ts['Problem Solving'] || 50) / 100;
-
-    scores['fullstack'] += (prog * 0.2 + js * 0.3 + db * 0.25 + be * 0.25) * 40;
-    scores['frontend'] += (js * 0.5 + prog * 0.3 + ps * 0.2) * 40;
-    scores['backend'] += (be * 0.4 + db * 0.35 + cs * 0.25) * 40;
-    scores['aiml'] += (ps * 0.4 + prog * 0.3 + cs * 0.3) * 40;
-    scores['data-science'] += (db * 0.4 + ps * 0.35 + prog * 0.25) * 40;
-    scores['data-analytics'] += (db * 0.5 + ps * 0.3 + prog * 0.2) * 40;
-    scores['cybersecurity'] += (cs * 0.4 + be * 0.3 + ps * 0.3) * 40;
-    scores['cloud'] += (be * 0.35 + cs * 0.35 + db * 0.3) * 40;
-    scores['software-engineering'] += (cs * 0.35 + prog * 0.35 + ps * 0.3) * 40;
-  }
-
-  // Sort and rank
-  const ranked = Object.entries(scores)
-    .map(([domainId, score]) => ({
-      domainId,
-      score: Math.min(Math.round(score), 98),
-      domain: DOMAINS.find(d => d.id === domainId),
-    }))
-    .sort((a, b) => b.score - a.score);
-
-  const primary = ranked[0];
-  const secondary = ranked[1];
+  const capabilities = calculateAllDomainCapabilities({}, assessmentResults, interestProfile);
+  const primary = capabilities[0] || DOMAINS[0];
+  const secondary = capabilities[1] || capabilities[0];
 
   return {
-    primaryDomain: primary.domainId,
-    matchScore: Math.max(primary.score, 72),
-    secondaryDomain: secondary.domainId,
-    secondaryScore: Math.max(secondary.score, 60),
-    rankings: ranked,
+    primaryDomain: primary.id,
+    matchScore: primary.capabilityPercentage || 85,
+    secondaryDomain: secondary.id,
+    secondaryScore: secondary.capabilityPercentage || 70,
+    rankings: capabilities.map(c => ({
+      domainId: c.id,
+      score: c.capabilityPercentage,
+      domain: c,
+    })),
     reasons: [
-      `Your problem-solving profile aligns with ${primary.domain?.name || 'this track'} requirements.`,
-      `Your foundational scores demonstrate strong aptitude in core technical areas.`,
-      `Targeted skill pathways will maximize your career trajectory for this specialization.`,
+      `Your diagnostic starting assessment shows strong aptitude for ${primary.name}.`,
+      `Demonstrated capability across foundational problem-solving and domain logic.`,
+      `Fastest learning curve to achieve industry-ready engineering projects.`,
     ],
   };
 }

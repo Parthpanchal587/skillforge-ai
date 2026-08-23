@@ -99,8 +99,9 @@ const DomainRecommendationPage = () => {
             })}
           </div>
 
-          <div style={{ textAlign: 'center' }}>
-            <button className="sf-btn sf-btn-ghost" onClick={() => navigate('/dashboard')}>Explore All Domains →</button>
+          <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 12 }}>
+            <button className="sf-btn sf-btn-primary" onClick={() => navigate('/career-paths')}>Open Full Career Map & Capability Matrix 🗺️</button>
+            <button className="sf-btn sf-btn-ghost" onClick={() => navigate('/dashboard')}>Go to Playground 🎪</button>
           </div>
         </div>
       </div>

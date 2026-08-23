@@ -125,7 +125,7 @@ const useStore = create(
 
       // ===== Knowledge Assessment =====
       completeAssessment: (results) => {
-        const currentDomainId = get().selectedDomain || 'fullstack';
+        const currentDomainId = get().selectedDomain || 'full-stack';
         const domain = DOMAINS.find(d => d.id === currentDomainId) || DOMAINS[0];
         
         // Map topic scores to domain skills
@@ -135,9 +135,12 @@ const useStore = create(
 
         domain.skills.forEach(skill => {
           let score = Math.max(overall - Math.floor(Math.random() * 15), 35);
-          if (skill.id === 'javascript' || skill.id === 'programming') score = topicScores['JavaScript'] || topicScores['Programming Logic'] || score;
+          if (skill.id === 'javascript' || skill.id === 'programming' || skill.id === 'js-fundamentals' || skill.id === 'python' || skill.id === 'ds-python') {
+            score = topicScores['JavaScript'] || topicScores['Programming Logic'] || score;
+          }
           if (skill.id === 'databases' || skill.id === 'sql') score = topicScores['Database'] || score;
-          if (skill.id === 'rest-api' || skill.id === 'backend') score = topicScores['Backend'] || score;
+          if (skill.id === 'rest-api' || skill.id === 'backend' || skill.id === 'nodejs') score = topicScores['Backend'] || score;
+          if (skill.id === 'dsa' || skill.id === 'math-stats') score = topicScores['Problem Solving'] || topicScores['CS Fundamentals'] || score;
 
           const status = score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT';
           initialSkills[skill.id] = {
@@ -177,23 +180,40 @@ const useStore = create(
       // ===== Domain Selection =====
       setDomainRecommendation: (rec) => set({ domainRecommendation: { ...rec, completed: true } }),
       selectDomain: (domainId) => {
-        const domain = DOMAINS.find(d => d.id === domainId);
+        const domain = DOMAINS.find(d => d.id === domainId) || DOMAINS[0];
         const currentSkills = { ...get().skillScores };
+        const assessment = get().assessmentResults;
+        const topicScores = assessment?.topicScores || {};
+        const overall = assessment?.overall || 65;
 
-        if (domain && Object.keys(currentSkills).length === 0) {
-          domain.skills.forEach(skill => {
-            const score = 50 + Math.floor(Math.random() * 30);
+        // Ensure all skills in the newly selected domain are populated with scores
+        domain.skills.forEach(skill => {
+          if (!currentSkills[skill.id]) {
+            let score = Math.max(overall - Math.floor(Math.random() * 12), 40);
+            if (skill.id === 'javascript' || skill.id === 'js-fundamentals' || skill.id === 'programming' || skill.id === 'ds-python' || skill.id === 'python') {
+              score = topicScores['JavaScript'] || topicScores['Programming Logic'] || score;
+            }
+            if (skill.id === 'databases' || skill.id === 'sql') {
+              score = topicScores['Database'] || score;
+            }
+            if (skill.id === 'rest-api' || skill.id === 'backend' || skill.id === 'nodejs') {
+              score = topicScores['Backend'] || score;
+            }
+            if (skill.id === 'dsa' || skill.id === 'math-stats' || skill.id === 'statistics') {
+              score = topicScores['Problem Solving'] || topicScores['CS Fundamentals'] || score;
+            }
+
             const status = score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT';
             currentSkills[skill.id] = {
               id: skill.id,
               name: skill.name,
               score,
               status,
-              testsTaken: 0,
+              testsTaken: assessment ? 1 : 0,
               lastTestDate: new Date().toISOString().split('T')[0],
             };
-          });
-        }
+          }
+        });
 
         const readiness = calculateCareerReadiness({
           skillScores: currentSkills,
@@ -201,11 +221,15 @@ const useStore = create(
           interview: get().interview,
         });
 
+        const weaknesses = detectWeaknesses(currentSkills);
+        const dailyPlan = generateDailyPlan(currentSkills, weaknesses);
+
         set({
           selectedDomain: domainId,
           skillScores: currentSkills,
           careerReadiness: readiness,
-          weaknesses: detectWeaknesses(currentSkills),
+          weaknesses,
+          dailyPlan,
         });
 
         const user = get().user;
