@@ -425,10 +425,10 @@ export function generateDailyPlan(skillScores, weaknesses, learningTime = 75) {
 // Project Evaluator
 // ============================================================
 export function evaluateProject(code, project) {
-  const lengthScore = Math.min(Math.round((code.length / 500) * 40), 40);
-  const codeQuality = Math.min(40 + Math.floor(Math.random() * 20) + lengthScore, 96);
-  const completeness = Math.min(45 + Math.floor(Math.random() * 20) + lengthScore, 98);
-  const architecture = Math.min(50 + Math.floor(Math.random() * 15) + lengthScore, 95);
+  const lengthScore = Math.min(Math.round(((code || '').length / 500) * 40), 40);
+  const codeQuality = Math.min(50 + lengthScore, 95);
+  const completeness = Math.min(55 + lengthScore, 98);
+  const architecture = Math.min(60 + lengthScore, 95);
   const overall = Math.round((codeQuality + completeness + architecture) / 3);
 
   return {
@@ -476,10 +476,14 @@ export function generateInterviewQuestions(domain, project, weaknesses) {
 // Interview Evaluator
 // ============================================================
 export function evaluateInterview(transcript) {
-  const answerCount = transcript.filter(t => t.role === 'user').length;
-  const technical = Math.min(60 + answerCount * 6 + Math.floor(Math.random() * 10), 96);
-  const communication = Math.min(65 + answerCount * 5 + Math.floor(Math.random() * 10), 94);
-  const problemSolving = Math.min(60 + answerCount * 6 + Math.floor(Math.random() * 8), 92);
+  const userMessages = transcript.filter(t => t.role === 'user');
+  const answerCount = userMessages.length;
+  const totalLength = userMessages.reduce((sum, m) => sum + (m.text || m.content || '').length, 0);
+  const depthBonus = Math.min(Math.round(totalLength / 80), 15);
+
+  const technical = Math.min(65 + answerCount * 5 + depthBonus, 98);
+  const communication = Math.min(70 + answerCount * 4 + depthBonus, 96);
+  const problemSolving = Math.min(65 + answerCount * 5 + depthBonus, 95);
   const overall = Math.round((technical + communication + problemSolving) / 3);
 
   return {

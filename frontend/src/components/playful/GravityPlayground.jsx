@@ -123,12 +123,12 @@ const GravityPlayground = ({
 
     skillList.forEach((skill, index) => {
       const scoreData = skillScores[skill.id] || {
-        score: Math.floor(30 + Math.random() * 60),
-        status: 'DEVELOPING',
+        score: 0,
+        status: 'LOCKED',
       };
       const score = scoreData.score || 0;
       const status = scoreData.status ||
-        (score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT');
+        (score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : score > 0 ? 'NEEDS_IMPROVEMENT' : 'LOCKED');
 
       let radius, density, restitution;
       if (status === 'MASTERED') {
@@ -137,8 +137,10 @@ const GravityPlayground = ({
         radius = 38; density = 0.0025; restitution = 0.65;
       } else if (status === 'DEVELOPING') {
         radius = 34; density = 0.0015; restitution = 0.8;
-      } else {
+      } else if (status === 'NEEDS_IMPROVEMENT') {
         radius = 30; density = 0.0008; restitution = 0.9;
+      } else {
+        radius = 28; density = 0.0006; restitution = 0.9;
       }
 
       // Spawn in arc above the earth

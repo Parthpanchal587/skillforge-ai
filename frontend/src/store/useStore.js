@@ -6,6 +6,82 @@ import { DOMAINS } from '../data/domainsData.js';
 import { calculateCareerReadiness, detectWeaknesses, generateDailyPlan } from '../services/aiEngine.js';
 import firebaseSync from '../services/firebaseSync.js';
 
+// Deterministic Skill Calibrator based strictly on actual Quiz & Assessment performance
+export const mapQuizResultsToSkills = (domain, results) => {
+  if (!domain || !domain.skills) return {};
+  const topicScores = results?.topicScores || {};
+  const overall = typeof results?.overall === 'number' ? results.overall : 0;
+  const initialSkills = {};
+
+  domain.skills.forEach(skill => {
+    let score = overall;
+    const sid = (skill.id || '').toLowerCase();
+
+    if (
+      sid.includes('js') || sid.includes('javascript') ||
+      sid.includes('programming') || sid.includes('python') ||
+      sid.includes('clean-code') || sid.includes('oop')
+    ) {
+      score = topicScores['JavaScript'] !== undefined
+        ? topicScores['JavaScript']
+        : topicScores['Programming Logic'] !== undefined
+        ? topicScores['Programming Logic']
+        : overall;
+    } else if (
+      sid.includes('database') || sid.includes('sql') ||
+      sid.includes('excel') || sid.includes('bi-tools')
+    ) {
+      score = topicScores['Database'] !== undefined
+        ? topicScores['Database']
+        : overall;
+    } else if (
+      sid.includes('rest') || sid.includes('api') ||
+      sid.includes('node') || sid.includes('backend') ||
+      sid.includes('auth') || sid.includes('serverless') ||
+      sid.includes('cloud') || sid.includes('aws') ||
+      sid.includes('docker') || sid.includes('cicd') ||
+      sid.includes('kubernetes')
+    ) {
+      score = topicScores['Backend'] !== undefined
+        ? topicScores['Backend']
+        : overall;
+    } else if (
+      sid.includes('dsa') || sid.includes('math') ||
+      sid.includes('stat') || sid.includes('algo') ||
+      sid.includes('problem') || sid.includes('cs') ||
+      sid.includes('ml') || sid.includes('security') ||
+      sid.includes('system')
+    ) {
+      score = topicScores['Problem Solving'] !== undefined
+        ? topicScores['Problem Solving']
+        : topicScores['CS Fundamentals'] !== undefined
+        ? topicScores['CS Fundamentals']
+        : overall;
+    } else if (
+      sid.includes('html') || sid.includes('css') ||
+      sid.includes('react') || sid.includes('dom') ||
+      sid.includes('framework')
+    ) {
+      score = topicScores['Programming Logic'] !== undefined
+        ? topicScores['Programming Logic']
+        : overall;
+    }
+
+    const calculatedStatus = score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : score > 0 ? 'NEEDS_IMPROVEMENT' : 'LOCKED';
+
+    initialSkills[skill.id] = {
+      id: skill.id,
+      name: skill.name,
+      score: Math.min(Math.max(Math.round(score), 0), 100),
+      status: calculatedStatus,
+      testsTaken: results ? 1 : 0,
+      lastTestDate: results ? new Date().toISOString().split('T')[0] : null,
+    };
+  });
+
+  return initialSkills;
+};
+
 const useStore = create(
   persist(
     (set, get) => ({
@@ -69,15 +145,15 @@ const useStore = create(
         const domainId = get().selectedDomain || 'full-stack';
         const currentSkills = { ...get().skillScores };
 
-        // Ensure baseline skill scores exist so the dashboard physics engine & charts render properly
+        // For new users without quiz scores: start with clean unassessed initial baseline (0% / LOCKED)
         if (Object.keys(currentSkills).length === 0) {
           const dom = DOMAINS.find(d => d.id === domainId) || DOMAINS[0];
           dom.skills.forEach(skill => {
             currentSkills[skill.id] = {
               id: skill.id,
               name: skill.name,
-              score: 50,
-              status: 'DEVELOPING',
+              score: 0,
+              status: 'LOCKED',
               testsTaken: 0,
               lastTestDate: null,
             };
@@ -174,30 +250,8 @@ const useStore = create(
         const currentDomainId = get().selectedDomain || 'full-stack';
         const domain = DOMAINS.find(d => d.id === currentDomainId) || DOMAINS[0];
         
-        // Map topic scores to domain skills
-        const initialSkills = {};
-        const topicScores = results.topicScores || {};
-        const overall = results.overall || 50;
-
-        domain.skills.forEach(skill => {
-          let score = Math.max(overall - Math.floor(Math.random() * 15), 35);
-          if (skill.id === 'javascript' || skill.id === 'programming' || skill.id === 'js-fundamentals' || skill.id === 'python' || skill.id === 'ds-python') {
-            score = topicScores['JavaScript'] || topicScores['Programming Logic'] || score;
-          }
-          if (skill.id === 'databases' || skill.id === 'sql') score = topicScores['Database'] || score;
-          if (skill.id === 'rest-api' || skill.id === 'backend' || skill.id === 'nodejs') score = topicScores['Backend'] || score;
-          if (skill.id === 'dsa' || skill.id === 'math-stats') score = topicScores['Problem Solving'] || topicScores['CS Fundamentals'] || score;
-
-          const status = score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT';
-          initialSkills[skill.id] = {
-            id: skill.id,
-            name: skill.name,
-            score,
-            status,
-            testsTaken: 1,
-            lastTestDate: new Date().toISOString().split('T')[0],
-          };
-        });
+        // Map topic scores to domain skills strictly from actual quiz answers
+        const initialSkills = mapQuizResultsToSkills(domain, results);
 
         const readiness = calculateCareerReadiness({
           skillScores: initialSkills,
@@ -229,37 +283,29 @@ const useStore = create(
         const domain = DOMAINS.find(d => d.id === domainId) || DOMAINS[0];
         const currentSkills = { ...get().skillScores };
         const assessment = get().assessmentResults;
-        const topicScores = assessment?.topicScores || {};
-        const overall = assessment?.overall || 65;
 
-        // Ensure all skills in the newly selected domain are populated with scores
-        domain.skills.forEach(skill => {
-          if (!currentSkills[skill.id]) {
-            let score = Math.max(overall - Math.floor(Math.random() * 12), 40);
-            if (skill.id === 'javascript' || skill.id === 'js-fundamentals' || skill.id === 'programming' || skill.id === 'ds-python' || skill.id === 'python') {
-              score = topicScores['JavaScript'] || topicScores['Programming Logic'] || score;
+        // Ensure all skills in the newly selected domain are populated deterministically based on quiz assessment
+        if (assessment && assessment.completed) {
+          const mappedDomainSkills = mapQuizResultsToSkills(domain, assessment);
+          domain.skills.forEach(skill => {
+            if (!currentSkills[skill.id] || currentSkills[skill.id].score === 0) {
+              currentSkills[skill.id] = mappedDomainSkills[skill.id];
             }
-            if (skill.id === 'databases' || skill.id === 'sql') {
-              score = topicScores['Database'] || score;
+          });
+        } else {
+          domain.skills.forEach(skill => {
+            if (!currentSkills[skill.id]) {
+              currentSkills[skill.id] = {
+                id: skill.id,
+                name: skill.name,
+                score: 0,
+                status: 'LOCKED',
+                testsTaken: 0,
+                lastTestDate: null,
+              };
             }
-            if (skill.id === 'rest-api' || skill.id === 'backend' || skill.id === 'nodejs') {
-              score = topicScores['Backend'] || score;
-            }
-            if (skill.id === 'dsa' || skill.id === 'math-stats' || skill.id === 'statistics') {
-              score = topicScores['Problem Solving'] || topicScores['CS Fundamentals'] || score;
-            }
-
-            const status = score >= 85 ? 'MASTERED' : score >= 65 ? 'STRONG' : score >= 45 ? 'DEVELOPING' : 'NEEDS_IMPROVEMENT';
-            currentSkills[skill.id] = {
-              id: skill.id,
-              name: skill.name,
-              score,
-              status,
-              testsTaken: assessment ? 1 : 0,
-              lastTestDate: new Date().toISOString().split('T')[0],
-            };
-          }
-        });
+          });
+        }
 
         const readiness = calculateCareerReadiness({
           skillScores: currentSkills,

@@ -25,7 +25,7 @@ const SkillNetworkCanvas = ({ skills = [], activeSkillId = null, onSelectSkill }
       const cy = canvas.height / 2;
       const x = cx + Math.cos(angle) * radius + (Math.random() - 0.5) * 30;
       const y = cy + Math.sin(angle) * radius + (Math.random() - 0.5) * 30;
-      const score = skill?.score || Math.floor(40 + Math.random() * 50);
+      const score = skill?.score || 0;
       const name = skill?.name || `Skill ${index + 1}`;
       const id = skill?.id || `skill-${index}`;
 
