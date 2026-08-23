@@ -1,0 +1,95 @@
+{
+  "users": {
+    "demo_user": {
+      "id": "demo_user",
+      "username": "Prem (Demo Pro)",
+      "email": "prem@skillforge.ai",
+      "role": "student",
+      "xp": 1450,
+      "streak": 5,
+      "currentLevel": "Full Stack Specialist",
+      "education": "B.Tech Computer Science",
+      "year": "2026",
+      "selectedDomain": "fullstack",
+      "createdAt": "2026-08-23T00:14:31.716Z"
+    },
+    "usr_1787445000432_udd2e": {
+      "id": "usr_1787445000432_udd2e",
+      "username": "mrparthpanchal007",
+      "email": "mrparthpanchal007@gmail.com",
+      "role": "student",
+      "emailVerified": true,
+      "xp": 100,
+      "streak": 1,
+      "currentLevel": "Apprentice",
+      "createdAt": "2026-08-23T00:30:00.433Z",
+      "updatedAt": "2026-08-23T00:30:00.433Z"
+    }
+  },
+  "skills": {
+    "demo_user": {
+      "userId": "demo_user",
+      "domainId": "fullstack",
+      "skillScores": {
+        "html-css": {
+          "score": 92,
+          "status": "MASTERED"
+        },
+        "javascript": {
+          "score": 88,
+          "status": "MASTERED"
+        },
+        "react": {
+          "score": 84,
+          "status": "STRONG"
+        },
+        "nodejs": {
+          "score": 75,
+          "status": "DEVELOPING"
+        },
+        "rest-api": {
+          "score": 45,
+          "status": "NEEDS_IMPROVEMENT"
+        },
+        "databases": {
+          "score": 60,
+          "status": "DEVELOPING"
+        },
+        "git": {
+          "score": 90,
+          "status": "MASTERED"
+        }
+      },
+      "updatedAt": "2026-08-23T00:14:31.718Z"
+    }
+  },
+  "projects": {},
+  "interviews": {},
+  "courses": {},
+  "otp_codes": {
+    "parth@gmail.com": {
+      "code": "729822",
+      "expiresAt": 1787445383486,
+      "updatedAt": "2026-08-23T00:26:23.487Z",
+      "createdAt": "2026-08-23T00:26:23.487Z"
+    },
+    "test@gmail.com": {
+      "code": "848767",
+      "expiresAt": 1787445734162,
+      "updatedAt": "2026-08-23T00:32:14.163Z",
+      "createdAt": "2026-08-23T00:32:14.163Z"
+    },
+    "student@gmail.com": {
+      "code": "663246",
+      "expiresAt": 1787445579326,
+      "updatedAt": "2026-08-23T00:29:39.327Z",
+      "createdAt": "2026-08-23T00:29:39.327Z"
+    },
+    "mrparthpanchal007@gmail.com": {
+      "code": "695762",
+      "expiresAt": 1787445772661,
+      "updatedAt": "2026-08-23T00:32:52.661Z",
+      "createdAt": "2026-08-23T00:32:52.661Z"
+    }
+  }
+}
