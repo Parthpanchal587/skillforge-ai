@@ -22,6 +22,8 @@ build/
 frontend/dist/
 frontend/build/
 *.local
+*.pdf
+generate_pdf.py
 
 # Database files
 *.db
