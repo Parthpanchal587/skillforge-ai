@@ -161,12 +161,19 @@ export function recommendDomain(interestProfile, assessmentResults) {
   const capabilities = calculateAllDomainCapabilities({}, assessmentResults, interestProfile);
   const primary = capabilities[0] || DOMAINS[0];
   const secondary = capabilities[1] || capabilities[0];
+  const alternatives = capabilities.slice(1, 4).map(c => ({
+    id: c.id,
+    name: c.name,
+    score: c.capabilityPercentage || 75,
+    icon: c.icon,
+  }));
 
   return {
     primaryDomain: primary.id,
     matchScore: primary.capabilityPercentage || 85,
     secondaryDomain: secondary.id,
     secondaryScore: secondary.capabilityPercentage || 70,
+    alternatives,
     rankings: capabilities.map(c => ({
       domainId: c.id,
       score: c.capabilityPercentage,
