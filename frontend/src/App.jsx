@@ -4,7 +4,6 @@ import { AnimatePresence } from 'framer-motion';
 import useStore from './store/useStore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import AICopilotWidget from './components/AICopilotWidget';
 import PageTransition from './components/motion/PageTransition';
 import PhysicsProvider from './physics/PhysicsProvider';
 
@@ -122,7 +121,6 @@ function App() {
           <main style={{ flex: 1 }}>
             <AnimatedRoutes />
           </main>
-          <AICopilotWidget />
           <Footer />
         </div>
       </BrowserRouter>

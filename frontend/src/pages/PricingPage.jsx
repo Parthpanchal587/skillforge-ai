@@ -53,7 +53,7 @@ const plans = [
       '1-on-1 Senior Staff Architect Pairing',
       'FAANG Production Portfolio Review',
       'Dedicated Internship Placement Agent',
-      'Priority Compute & Zero-Latency AI Copilot',
+      'Priority Compute & Zero-Latency AI Mentor',
       'Verified Gold Skill Certificate',
     ],
     cta: 'JOIN VIP ARCHITECTS 👑',
