@@ -6,6 +6,7 @@ const PhysicsContext = createContext(null);
 export const PhysicsProvider = ({ children, initialGravity = { x: 0, y: 1 } }) => {
   const engineRef = useRef(null);
   const runnerRef = useRef(null);
+  const [engineState, setEngineState] = useState(null);
   const [isZeroG, setIsZeroG] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [collisionAlert, setCollisionAlert] = useState(null);
@@ -48,6 +49,8 @@ export const PhysicsProvider = ({ children, initialGravity = { x: 0, y: 1 } }) =
       }
     });
 
+    // Set engine as state so context consumers re-render
+    setEngineState(engine);
     setIsReady(true);
 
     return () => {
@@ -101,7 +104,7 @@ export const PhysicsProvider = ({ children, initialGravity = { x: 0, y: 1 } }) =
   return (
     <PhysicsContext.Provider
       value={{
-        engine: engineRef.current,
+        engine: engineState,
         isReady,
         isZeroG,
         toggleZeroG,
