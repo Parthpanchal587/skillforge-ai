@@ -19,9 +19,8 @@ const InterviewSimulatorPage = () => {
   const [answers, setAnswers] = useState({});
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [results, setResults] = useState(interview || null);
-  const [orbState, setOrbState] = useState('idle'); // 'idle' | 'listening' | 'thinking'
+  const [orbState, setOrbState] = useState('idle');
   
-  // Terminal typing effect for questions
   const [displayedQuestion, setDisplayedQuestion] = useState('');
   const typingTimerRef = useRef(null);
 
@@ -95,37 +94,36 @@ const InterviewSimulatorPage = () => {
   }, [current, stage, questions]);
 
   const catColors = {
-    project: { bg: 'rgba(239,35,60,0.1)', color: 'var(--sf-accent)' },
-    technical: { bg: 'rgba(255,255,255,0.1)', color: 'var(--sf-text-primary)' },
-    behavioral: { bg: 'rgba(239,35,60,0.05)', color: 'var(--sf-accent-light)' },
-    hr: { bg: 'rgba(113,113,122,0.1)', color: 'var(--sf-text-muted)' },
+    project: { bg: 'rgba(255,82,119,0.15)', color: '#FF5277' },
+    technical: { bg: 'rgba(255,255,255,0.1)', color: '#FFFFFF' },
+    behavioral: { bg: 'rgba(255,225,53,0.15)', color: '#FFE135' },
+    hr: { bg: 'rgba(179,136,255,0.1)', color: '#B388FF' },
   };
 
-  // 01 — Intro Stage with 3D Breathing Orb
+  // 01 — Intro Stage
   if (stage === 'intro') {
     return (
-      <div className="sf-page sf-ambient-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="sf-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A14' }}>
         <div className="sf-container" style={{ maxWidth: 640 }}>
           <CardTilt3D maxRotation={4}>
-            <div className="sf-card sf-glow-red" style={{ padding: 48, textAlign: 'center', border: '1px solid var(--sf-border-glow)' }}>
-              {/* 31 — 3D Breathing Neural AI Orb */}
+            <div style={{ padding: 48, textAlign: 'center', background: '#111122', border: '3px solid #1A1A2E', borderRadius: 16, boxShadow: '6px 6px 0px #1A1A2E' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
                 <InterviewOrb3D state="idle" size={170} />
               </div>
-              <h1 className="sf-heading sf-heading-xl" style={{ textTransform: 'uppercase', marginBottom: 12, letterSpacing: '0.08em' }}>
+              <h1 style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 900, fontSize: '1.8rem', color: '#FFFFFF', textTransform: 'uppercase', marginBottom: 12, letterSpacing: '0.08em' }}>
                 AI INTERROGATION MODULE
               </h1>
-              <p className="sf-text" style={{ marginBottom: 32, fontSize: '1rem', lineHeight: 1.6 }}>
+              <p style={{ color: '#B0B0CC', marginBottom: 32, fontSize: '1rem', lineHeight: 1.6 }}>
                 Initiating rigorous technical evaluation. The neural interviewer continuously adapts to your identified skill gaps and project architecture.
               </p>
               
-              <div style={{ background: '#050505', padding: 20, borderRadius: 'var(--sf-radius-sm)', border: '1px solid var(--sf-border-light)', marginBottom: 32, textAlign: 'left' }}>
-                <p className="sf-label" style={{ marginBottom: 14 }}>ASSESSMENT EVALUATION VECTORS:</p>
+              <div style={{ background: '#050510', padding: 20, borderRadius: 12, border: '2px solid #2A2A3E', marginBottom: 32, textAlign: 'left' }}>
+                <p style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#FFE135', marginBottom: 14, textTransform: 'uppercase' }}>ASSESSMENT EVALUATION VECTORS:</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   {Object.entries(catColors).map(([cat, style]) => (
                     <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 8, height: 8, background: style.color, borderRadius: '50%', boxShadow: `0 0 8px ${style.color}` }} />
-                      <span style={{ fontWeight: 700, color: 'var(--sf-text-primary)', textTransform: 'uppercase', fontSize: '0.8125rem', letterSpacing: '0.05em' }}>{cat}</span>
+                      <span style={{ fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', fontSize: '0.8125rem', letterSpacing: '0.05em' }}>{cat}</span>
                     </div>
                   ))}
                 </div>
@@ -135,7 +133,7 @@ const InterviewSimulatorPage = () => {
                 INITIALIZE INTERVIEW SESSION →
               </MagneticButton>
               {interview?.completed && (
-                <button className="sf-btn sf-btn-ghost" style={{ marginTop: 16, width: '100%' }} onClick={() => setStage('results')}>
+                <button className="sf-btn sf-btn-ghost" style={{ marginTop: 16, width: '100%', color: '#B0B0CC', borderColor: '#3A3A4E' }} onClick={() => setStage('results')}>
                   ACCESS PREVIOUS INTERROGATION LOGS
                 </button>
               )}
@@ -146,27 +144,26 @@ const InterviewSimulatorPage = () => {
     );
   }
 
-  // 02 — Interview Active Stage with 3D Orb & Directional Question Morph (32 & 33)
+  // 02 — Interview Active Stage
   if (stage === 'interview') {
     const q = questions[current];
     const catStyle = catColors[q?.category] || catColors.technical;
 
     return (
-      <div className="sf-page sf-ambient-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="sf-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A14' }}>
         <div className="sf-container" style={{ maxWidth: 840, width: '100%' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span className="sf-label" style={{ color: 'var(--sf-text-muted)' }}>QUERY {current + 1} / {questions.length}</span>
+            <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#8888AA', textTransform: 'uppercase' }}>QUERY {current + 1} / {questions.length}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span className="sf-label" style={{ color: catStyle.color }}>VECTOR: {q?.category.toUpperCase()}</span>
-              <div className="sf-pulse-dot" />
+              <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: catStyle.color, textTransform: 'uppercase' }}>VECTOR: {q?.category.toUpperCase()}</span>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF5277', animation: 'pulse 1.5s ease-in-out infinite' }} />
             </div>
           </div>
           
-          <div className="sf-progress-bar" style={{ marginBottom: 28, height: 4, background: 'rgba(255,255,255,0.05)' }}>
+          <div style={{ marginBottom: 28, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
             <motion.div
-              className="sf-progress-fill"
-              style={{ background: 'var(--sf-accent)', boxShadow: '0 0 12px var(--sf-accent-glow)' }}
+              style={{ height: '100%', background: '#FFE135', boxShadow: '0 0 12px rgba(255,225,53,0.4)', borderRadius: 2 }}
               animate={{ width: `${((current + 1) / questions.length) * 100}%` }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             />
@@ -179,45 +176,67 @@ const InterviewSimulatorPage = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -25 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="sf-card"
               style={{
                 padding: 40,
-                background: 'rgba(5, 5, 5, 0.95)',
-                border: '1px solid var(--sf-border-glow)',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(239,35,60,0.04)',
+                background: '#111122',
+                border: '3px solid #1A1A2E',
+                borderRadius: 16,
+                boxShadow: '6px 6px 0px #1A1A2E',
               }}
             >
               {/* Header with 3D Orb Feedback */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24 }}>
                 <InterviewOrb3D state={orbState} size={84} />
                 <div>
-                  <span className="sf-badge sf-badge-red">
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    background: '#FF5277',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.1em',
+                    borderRadius: 6,
+                    textTransform: 'uppercase',
+                  }}>
                     {orbState === 'thinking' ? 'AI SYNTHESIZING...' : orbState === 'listening' ? 'AI LISTENING' : 'INTERROGATING'}
                   </span>
-                  <p className="sf-text-sm" style={{ marginTop: 4, color: 'var(--sf-text-muted)' }}>
+                  <p style={{ marginTop: 4, color: '#8888AA', fontSize: '0.85rem' }}>
                     Type your comprehensive response below.
                   </p>
                 </div>
               </div>
               
-              <div style={{ minHeight: 100, marginBottom: 28, padding: '16px 20px', background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--sf-radius-sm)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <h2 className="sf-heading sf-heading-lg" style={{ lineHeight: 1.5, color: 'var(--sf-text-primary)', fontFamily: '"JetBrains Mono", monospace', fontSize: '1.05rem' }}>
-                  <span style={{ color: 'var(--sf-accent)' }}>&gt;</span> {displayedQuestion}
-                  <span className="sf-blink" style={{ color: 'var(--sf-accent)' }}>_</span>
+              {/* Question terminal display */}
+              <div style={{ minHeight: 100, marginBottom: 28, padding: '16px 20px', background: '#0A0A18', borderRadius: 12, border: '2px solid #2A2A3E' }}>
+                <h2 style={{ lineHeight: 1.5, color: '#FFFFFF', fontFamily: '"JetBrains Mono", "Space Grotesk", monospace', fontSize: '1.05rem', fontWeight: 700 }}>
+                  <span style={{ color: '#FFE135' }}>&gt;</span> {displayedQuestion}
+                  <span style={{ color: '#FFE135', animation: 'blink 1s step-end infinite' }}>_</span>
                 </h2>
               </div>
               
+              {/* Answer textarea */}
               <textarea
-                className="sf-input"
                 rows={7}
-                style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.95rem', background: 'rgba(255,255,255,0.02)', padding: 18, border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{
+                  width: '100%',
+                  fontFamily: '"JetBrains Mono", "Space Grotesk", monospace',
+                  fontSize: '0.95rem',
+                  background: '#0A0A18',
+                  color: '#FFFFFF',
+                  padding: 18,
+                  border: '2px solid #2A2A3E',
+                  borderRadius: 12,
+                  outline: 'none',
+                  resize: 'vertical',
+                }}
                 placeholder="Transmit technical response or architectural proof..."
                 value={currentAnswer}
                 onChange={e => setCurrentAnswer(e.target.value)}
               />
                 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                <span className="sf-text-sm" style={{ color: 'var(--sf-text-dim)', fontSize: '0.75rem' }}>
+                <span style={{ color: '#6666AA', fontSize: '0.75rem' }}>
                   * Press Transmit when your answer is complete.
                 </span>
                 <MagneticButton
@@ -235,51 +254,64 @@ const InterviewSimulatorPage = () => {
     );
   }
 
-  // 03 — Results Stage with 3D Cards, Animated Counters & Score Morph (10, 19, 35)
+  // 03 — Results Stage
   if (stage === 'results' && results) {
     return (
-      <div className="sf-page sf-ambient-bg">
+      <div className="sf-page" style={{ background: '#0A0A14' }}>
         <div className="sf-container" style={{ maxWidth: 920 }}>
           <div className="sf-animate-slide">
             
             <div style={{ textAlign: 'center', marginBottom: 36 }}>
-              <div style={{ fontSize: 44, filter: 'drop-shadow(0 0 16px rgba(239,35,60,0.5))', marginBottom: 12 }}>📋</div>
-              <h1 className="sf-heading sf-heading-xl" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>INTERROGATION LOGS</h1>
-              <p className="sf-text" style={{ marginTop: 6, letterSpacing: '0.1em', color: 'var(--sf-accent-light)' }}>EVALUATION MATRIX COMPLETE</p>
+              <div style={{ fontSize: 44, filter: 'drop-shadow(0 0 16px rgba(255,82,119,0.5))', marginBottom: 12 }}>📋</div>
+              <h1 style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 900, fontSize: '2rem', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>INTERROGATION LOGS</h1>
+              <p style={{ marginTop: 6, letterSpacing: '0.1em', color: '#FFE135', fontSize: '0.85rem', fontWeight: 700 }}>EVALUATION MATRIX COMPLETE</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, marginBottom: 24 }}>
-              {/* Overall Score with 3D Tilt */}
+              {/* Overall Score */}
               <CardTilt3D maxRotation={4}>
-                <div className="sf-card" style={{ textAlign: 'center', padding: 36, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '1px solid var(--sf-border-glow)' }}>
-                  <p className="sf-label" style={{ marginBottom: 14, color: 'var(--sf-accent)' }}>OVERALL CONFIDENCE</p>
-                  <p style={{ fontSize: '4.5rem', fontWeight: 800, color: 'var(--sf-text-primary)', lineHeight: 1, filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.2))' }}>
+                <div style={{ textAlign: 'center', padding: 36, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#111122', border: '3px solid #1A1A2E', borderRadius: 16, boxShadow: '6px 6px 0px #1A1A2E' }}>
+                  <p style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#FF5277', marginBottom: 14, textTransform: 'uppercase' }}>OVERALL CONFIDENCE</p>
+                  <p style={{ fontSize: '4.5rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1, filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.2))' }}>
                     <AnimatedCounter value={results.overall} duration={1300} suffix="%" />
                   </p>
-                  <span className="sf-badge sf-badge-red" style={{ alignSelf: 'center', marginTop: 14 }}>VERIFIED BENCHMARK</span>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    background: '#FF5277',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.1em',
+                    borderRadius: 6,
+                    alignSelf: 'center',
+                    marginTop: 14,
+                    textTransform: 'uppercase',
+                  }}>VERIFIED BENCHMARK</span>
                 </div>
               </CardTilt3D>
 
-              {/* Score Breakdown (19 — Score Morph & Bar Draw) */}
-              <div className="sf-card" style={{ padding: 32 }}>
-                <h3 className="sf-label" style={{ marginBottom: 20 }}>VECTOR BREAKDOWN</h3>
+              {/* Score Breakdown */}
+              <div style={{ padding: 32, background: '#111122', border: '3px solid #1A1A2E', borderRadius: 16, boxShadow: '6px 6px 0px #1A1A2E' }}>
+                <h3 style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#FFE135', marginBottom: 20, textTransform: 'uppercase' }}>VECTOR BREAKDOWN</h3>
                 <div style={{ display: 'grid', gap: 16 }}>
                   {Object.entries(results.scores).map(([key, score]) => (
-                    <div key={key} className="sf-skill-bar">
-                      <span className="sf-skill-name" style={{ textTransform: 'uppercase', width: 140, fontSize: '0.8125rem' }}>{key}</span>
-                      <div className="sf-skill-track" style={{ height: 6 }}>
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ textTransform: 'uppercase', width: 140, fontSize: '0.8125rem', color: '#B0B0CC', fontWeight: 700 }}>{key}</span>
+                      <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
                         <motion.div
-                          className="sf-skill-fill"
                           initial={{ width: 0 }}
                           animate={{ width: `${score}%` }}
                           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
                           style={{
-                            background: score >= 80 ? 'var(--sf-accent)' : 'var(--sf-text-primary)',
-                            boxShadow: score >= 80 ? '0 0 10px var(--sf-accent-glow)' : 'none',
+                            height: '100%',
+                            borderRadius: 3,
+                            background: score >= 80 ? '#FF5277' : '#FFE135',
+                            boxShadow: score >= 80 ? '0 0 10px rgba(255,82,119,0.4)' : 'none',
                           }}
                         />
                       </div>
-                      <span className="sf-skill-score" style={{ color: score >= 80 ? 'var(--sf-accent)' : 'var(--sf-text-primary)', fontWeight: 800 }}>
+                      <span style={{ color: score >= 80 ? '#FF5277' : '#FFFFFF', fontWeight: 800, fontSize: '0.85rem', minWidth: 44, textAlign: 'right' }}>
                         <AnimatedCounter value={score} duration={1100} suffix="%" />
                       </span>
                     </div>
@@ -290,24 +322,24 @@ const InterviewSimulatorPage = () => {
 
             {/* Feedback Columns */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 36 }}>
-              <div className="sf-card" style={{ padding: 28, background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 100%)', borderTop: '2px solid var(--sf-text-primary)' }}>
-                <h4 className="sf-label" style={{ marginBottom: 14, color: 'var(--sf-text-primary)' }}>OBSERVED STRENGTHS</h4>
+              <div style={{ padding: 28, background: '#111122', border: '3px solid #1A1A2E', borderRadius: 16, boxShadow: '6px 6px 0px #1A1A2E', borderTop: '4px solid #00F5A0' }}>
+                <h4 style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#FFFFFF', marginBottom: 14, textTransform: 'uppercase' }}>OBSERVED STRENGTHS</h4>
                 <div style={{ display: 'grid', gap: 10 }}>
                   {results.feedback?.strengths?.map((s, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ color: 'var(--sf-accent-light)', marginTop: 2 }}>✓</span>
-                      <p className="sf-text" style={{ fontSize: '0.875rem' }}>{s}</p>
+                      <span style={{ color: '#00F5A0', marginTop: 2 }}>✓</span>
+                      <p style={{ fontSize: '0.875rem', color: '#B0B0CC', lineHeight: 1.5 }}>{s}</p>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="sf-card" style={{ padding: 28, background: 'linear-gradient(135deg, rgba(239,35,60,0.05) 0%, transparent 100%)', borderTop: '2px solid var(--sf-accent)' }}>
-                <h4 className="sf-label" style={{ marginBottom: 14, color: 'var(--sf-accent)' }}>SYSTEMIC IMPROVEMENTS</h4>
+              <div style={{ padding: 28, background: '#111122', border: '3px solid #1A1A2E', borderRadius: 16, boxShadow: '6px 6px 0px #1A1A2E', borderTop: '4px solid #FF5277' }}>
+                <h4 style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.12em', color: '#FF5277', marginBottom: 14, textTransform: 'uppercase' }}>SYSTEMIC IMPROVEMENTS</h4>
                 <div style={{ display: 'grid', gap: 10 }}>
                   {results.feedback?.improvements?.map((s, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <span style={{ color: 'var(--sf-accent)', marginTop: 2 }}>⚠</span>
-                      <p className="sf-text" style={{ fontSize: '0.875rem' }}>{s}</p>
+                      <span style={{ color: '#FFE135', marginTop: 2 }}>⚠</span>
+                      <p style={{ fontSize: '0.875rem', color: '#B0B0CC', lineHeight: 1.5 }}>{s}</p>
                     </div>
                   ))}
                 </div>
@@ -315,7 +347,7 @@ const InterviewSimulatorPage = () => {
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <MagneticButton className="sf-btn sf-btn-ghost" onClick={() => setStage('intro')}>
+              <MagneticButton className="sf-btn sf-btn-ghost" style={{ color: '#B0B0CC', borderColor: '#3A3A4E' }} onClick={() => setStage('intro')}>
                 RE-INITIALIZE INTERROGATION
               </MagneticButton>
             </div>
